@@ -8,14 +8,14 @@
 
 | Field | Details |
 | --- | --- |
-| Remote repository | 待學生提供或唯讀核對，不記錄帳密或 token |
-| Target branch | 待學生確認或唯讀核對 |
-| Setup status | 待確認學生的 repo、remote 與開啟的專案根目錄 |
-| Last push verification | 待核對；記錄核對對象、分支、commit、依據及時間 |
+| Remote repository | https://github.com/ShenTsai/DSSI2026-group-1 |
+| Target branch | main |
+| Setup status | 已設定並同步 |
+| Last push verification | 待核對 |
 
 ## Research Question
 
-- 待本組先用自己的話填寫：關心的現象或初步疑問，以及為什麼想研究。不必已有正式題目；AI 依本組想法協助釐清，教師範例不代表本組構想。
+- 臺大周遭 YouBike 2.0 站點的車輛數最適化調度問題
 
 ## Team
 
@@ -23,14 +23,14 @@
 
 AI 只整理學生提供或明確確認的姓名與工作，不自行指派 PM／DE／DA，也不從 Git 作者、電腦帳號、檔名、範本示例或檔案提供者推定作者或責任；保留有依據的既有作者，不自動改成本次提供檔案的學生。等待回答時可先進行不依賴歸屬的檢查或討論。保留下列既有欄位，按已確認名單一人一列；尚無名單時保持空表，不先填入 3 或 4 位假成員。`Role` 記錄學生提供的角色與實際工作，確認姓名與工作不需額外要求學號或 GitHub 帳號。
 
-目前對話的學生：待確認（依本次對話更新，不自動沿用上一次的對話者）。
+目前對話的學生：柯典辰（B13303082）。
 
 | Name | Student ID | GitHub Account | Role |
 | --- | --- | --- | --- |
-| 蔡睿燊 | B13303057 | ShenTsai | ? |
-| 柯典辰 | B13303082 | peterko2005 | ? |
-| 李芸榛 | B13703038 | JenniferjjLee | ? |
-| 馮芳英 | B13303096 | phuonganhphung3007 | ? |
+| 柯典辰 | B13303082 | peterko2005 | PM, DA |
+| 蔡睿燊 | B13303057 | ShenTsai | DE, DA |
+| 李芸榛 | B13703038 | JenniferjjLee | DE |
+| 馮芳英 | B13303096 | phuonganhphung3007 | DA |
 
 ## Student Preferences
 
