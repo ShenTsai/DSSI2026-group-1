@@ -37,6 +37,7 @@ head(oas_codebook_df)
 # 1. TDX 原始 OAS JSON 網址與要擷取的 schema 名稱
 
 # YouBike 站點剩餘數量歷史資料：對應 data/raw/ 的 xlsx（CSV 下載格式，10 個欄位）
+
 oas_url <- "https://tdx.transportdata.tw/webapi/File/Swagger/V3/32ed55ef-5e29-4cb2-9513-092906a95ef4"
 schema_name <- "PTXPlus.Service.DTO.Historical.Specification.Dynamic.CSV.Bike.BikeAvailability"
 
@@ -82,3 +83,4 @@ youbike_codebook_df <- schema_to_codebook(schemas[[schema_name]])
 
 # 驗證步驟：列印全部欄位確認欄位與說明已順利載入
 print(youbike_codebook_df, n = Inf)
+

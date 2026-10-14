@@ -26,3 +26,61 @@
 - 不確定的研究選擇、姓名、分工或分析格式依共用規範詢問，沿用已確認答案；教師維護工作包時不啟動學生身分詢問。
 - Notebook、Rmd、Stata 與 LaTeX 的執行要求沿用原技能。缺少程式、資料或外部服務連線時，如實說明未完成的步驟，不將未執行的分析或未建立的外部文件寫成已完成。
 - 學生先建立自己的 repo 並在 VS Code 開啟；stage、commit、push 與 pull／sync 均由學生親自操作。Claude 依 `AGENTS.md` 的 `Course Repository and Git Workflow` 產出文件、提供操作說明與唯讀核對，不代做 Git 寫入；交付時分別說明本地產物、commit 與遠端推送狀態。
+
+## Coding Principle (For R)
+
+### Principle
+
+Users is most familiar with `tidyverse` and `fixest`.
+
+Prefer these packages when appropriate. Do not introduce unfamiliar packages merely because they provide a shorter implementation. If a less familiar package or function provides a substantial advantage, explain why it is being used.
+ 
+For example, prefer
+
+```r
+df <- df %>%
+  filter(year >= 2000) %>%
+  mutate(
+    growth = revenue / lag(revenue) - 1
+  )
+```
+
+over 
+
+```r
+df <- df[df$year >= 2000, ] |> transform(growth = revenue / lag(revenue) - 1)
+```
+
+### Syntax and typeset
+
+- Pipe Operator: use `|>` rather than `%>%`
+- Avoid unnecessary one-liners
+Prefer:
+    ```r
+    df <- df %>%
+    filter(year >= 2000) %>%
+    mutate(
+        real_income = income / price_index,
+        log_income = log(real_income)
+    )
+    ```
+    over:
+    ```r
+    df <- df %>% filter(year >= 2000) %>% mutate(real_income = income / price_index, log_income = log(income / price_index))
+    ```
+- Naming: Prefer descriptive variable names.
+
+## Data Validation
+
+Before performing substantial analysis, inspect the data when appropriate.
+
+Useful checks include:
+
+```r
+glimpse(df)
+summary(df)
+head(df)
+nrow(df)
+ncol(df)
+colSums(is.na(df))
+```

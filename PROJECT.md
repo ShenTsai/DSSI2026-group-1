@@ -62,6 +62,8 @@ AI 只整理學生提供或明確確認的姓名與工作，不自行指派 PM�
 
 | Dataset | Role | Data file | Documentation | Processing notebook | Verification | SHA-256 |
 | --- | --- | --- | --- | --- | --- | --- |
+| 局屬氣象站天氣觀測（TDX，2024-07-01） | raw | [data/raw/局屬氣象站-天氣觀測報告資料2024-07-01.CSV](data/raw/局屬氣象站-天氣觀測報告資料2024-07-01.CSV) | [data/raw/weather_codebook.md](data/raw/weather_codebook.md) | not applicable (source) | 2026-10-14 readr 讀取：22,368 列 × 35 欄、233 站，欄位與 OAS 一致；`-99` 缺值代碼未處理 | `2786693db94e07c59a1d7e3c76bd73d626b5364e7ee3e8cb56d1b3642e9de3b3` |
+| 臺北市 YouBike 站點剩餘數量（TDX，2026-10-01） | raw | [data/raw/臺北市公共自行車站點剩餘數量歷史資料2026-10-01.xlsx](data/raw/臺北市公共自行車站點剩餘數量歷史資料2026-10-01.xlsx) | [data/raw/youbike_codebook.md](data/raw/youbike_codebook.md) | not applicable (source) | 2026-10-14 readxl 讀取：1,048,575 列 × 10 欄、768 站，欄位與 OAS 一致；疑似因 Excel 列數上限截斷，尚不可直接分析 | `4f5de9bb380d515a07abd702893bef5df447219e2a2cef4094c61e6d397374e2` |
 
 路徑與連結相對於本專案根目錄。Role 記錄 raw／analysis／train／test 或已確認用途；Verification 說明實際執行的檢查、日期與限制，未完成時明列 pending／failed。SHA-256 由實際檔案計算。外部整理檔沒有產生程式可記 not available；原始來源可記 not applicable (source)。
 
