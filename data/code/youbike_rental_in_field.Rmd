@@ -19,8 +19,9 @@ knitr::opts_chunk$set(error = FALSE)
 ## What does this file do?
 
 - 從 2024 年臺北市 YouBike 站點剩餘數量歷史資料（每日一檔，共 366 檔）中，只保留位於研究範圍（臺大／公館一帶多邊形）內的站點紀錄。研究範圍站點清單來自 `data/processed/stations_in_field.csv`（由 `data/code/filter_stations_in_field.R` 產生，78 個 `StationUID`）。
-- 觀察單位不變：站點 × 來源更新時間（`StationUID` × `SrcUpdateTime`），每筆為一次站點狀態更新。本檔只做篩選與型別轉換，不做時間彙總、不補值、不重新編碼 `ServiceStatus`。
-- 型別轉換：車數欄位轉為整數；`SrcUpdateTime`、`UpdateTime` 由含 `+08:00` 的 ISO 8601 字串轉為 `Asia/Taipei` 時區的時間；`StationUID`、`StationID`、`ServiceStatus`、`ServiceType` 保留原始文字。新增 `source_date`，記錄該列來自哪一天的原始檔。
+- 觀察單位不變：站點 × 來源更新時間（`StationUID` × `SrcUpdateTime`），每筆為一次站點狀態更新。本檔只做篩選、型別轉換與一項重新編碼（見下），不做時間彙總、不補值。
+- 型別轉換：車數欄位轉為整數；`SrcUpdateTime`、`UpdateTime` 由含 `+08:00` 的 ISO 8601 字串轉為 `Asia/Taipei` 時區的時間；`StationUID`、`StationID`、`ServiceType` 保留原始文字。新增 `source_date`，記錄該列來自哪一天的原始檔。
+- 重新編碼：原始 `ServiceStatus` 除「正常營運」外，另有未列於 OAS 規格的代碼 `2`。依組員 2026-10-17 對照資料網站的確認（網站上服務狀態只有「停止營運」與「正常營運」），將 `2` 改為「停止營運」；輸出的 `ServiceStatus` 只有這兩個值。原始值仍保留在 `data/raw/` 的原始檔中。
 - 空檔處理：0 bytes 的原始檔不讀取；只有標題列的檔案讀入後為 0 列。兩者都在下方逐檔紀錄中列出，不視為錯誤，也不補資料。
 - 不涉及合併、train/test 切分或任何需擬合的前處理。
 
@@ -53,7 +54,7 @@ knitr::opts_chunk$set(error = FALSE)
   - Output key: `rental_in_field`
   - Description: 研究範圍內 78 站的 2024 年站點狀態更新紀錄，原始 10 欄加上 `source_date`。
   - Role: `analysis`
-  - Documentation: `data/processed/<OUTPUT_DOCUMENTATION.Rmd>`（待建立）
+  - Documentation: `data/processed/youbike_rental_in_field_2024_doc.Rmd`
   - Expected schema and row-count rules: 11 欄；`StationUID` 全部屬於站點清單；(`StationUID`, `SrcUpdateTime`) 不重複；無缺值；`SrcUpdateTime` 的日期等於 `source_date`；列數等於各原始檔篩選後列數之和。
   - Verification status / SHA-256: 見最後一個 chunk 的實際輸出與下方「執行結果」。
   - Downstream finding input: `data/processed/youbike_rental_in_field_2024.parquet` (same exact file)
@@ -260,8 +261,15 @@ stopifnot(
   all(grepl(TIME_PATTERN, rental_in_field_chr$UpdateTime))
 )
 
+# ServiceStatus before recoding: only these two raw values are expected.
+rental_in_field_chr |>
+  count(ServiceStatus)
+stopifnot(all(rental_in_field_chr$ServiceStatus %in% c("正常營運", "2")))
+
 rental_in_field <- rental_in_field_chr |>
   mutate(
+    # Code 2 means 停止營運, as confirmed by the group from the data website.
+    ServiceStatus = if_else(ServiceStatus == "2", "停止營運", ServiceStatus),
     across(all_of(COUNT_COLUMNS), as.integer),
     across(c(SrcUpdateTime, UpdateTime), \(timestamp) ymd_hms(timestamp, tz = "Asia/Taipei", quiet = TRUE))
   ) |>
@@ -272,6 +280,8 @@ stopifnot(
   nrow(rental_in_field) == sum(file_log$kept_rows),
   all(rental_in_field$StationUID %in% field_station_ids),
   !anyNA(rental_in_field),
+  all(rental_in_field$ServiceStatus %in% c("正常營運", "停止營運")),
+  sum(rental_in_field$ServiceStatus == "停止營運") == sum(rental_in_field_chr$ServiceStatus == "2"),
   !anyDuplicated(select(rental_in_field, StationUID, SrcUpdateTime)),
   all(as.Date(rental_in_field$SrcUpdateTime, tz = "Asia/Taipei") == rental_in_field$source_date)
 )
@@ -283,7 +293,7 @@ cat("Days with rows:", n_distinct(rental_in_field$source_date), "\n")
 ```
 
 ```{r}
-# Values to note for downstream analysis; reported, not recoded.
+# Values to note for downstream analysis.
 rental_in_field |>
   count(ServiceStatus, ServiceType)
 
@@ -338,13 +348,13 @@ for (key in names(input_paths)) {
 
 ## 執行結果
 
-2026-10-17 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）完整執行，約 2 分鐘。以下為該次實際輸出：
+2026-10-17 加入 `ServiceStatus` 重新編碼後，以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）重新完整執行，約 2 分鐘，取代先前未重新編碼的版本（SHA-256 `6d631d33…`）。以下為該次實際輸出：
 
 - 輸入核對：站點清單 78 站（81 列）；366 個原始檔全部與 manifest 的 SHA-256 一致。
 - 空檔：6 檔為 0 bytes（2024-10-31、11-02、11-07、11-08、11-09、11-10），4 檔只有 1–2 列且都不屬於研究範圍（11-01、11-03、11-11、12-10）。共 356 天有資料、10 天沒有，**這 10 天在輸出中完全缺漏**，下游若做日別或時間序列分析需留意。
 - 篩選：原始 111,802,383 列 → 保留 7,225,134 列；78 站全部出現。
 - 檢查全部通過：無缺值、(`StationUID`, `SrcUpdateTime`) 無重複、時間日期與檔名日期一致、車數皆為非負整數。
 - 每日列數差異大：中位數 18,670 列／天，但 2024-01-01 至 01-13 約 100,000 列／天（約為平常的 5 倍），1 月共 1,411,029 列。來源似乎在 1 月上旬改變了更新頻率，以列數加總或平均時須先統一時間間隔。
-- **`ServiceStatus` 有未定義代碼**：7,205,172 列為「正常營運」，19,962 列為 `2`。OAS 規格只定義 0（停止營運）與 1（正常營運），`2` 的意義待確認；本檔保留原值不重新編碼。`ServiceType` 全為 `YouBike2`。
+- **`ServiceStatus` 重新編碼**：原始值 7,205,172 列為「正常營運」、19,962 列為 `2`（不在 OAS 規格的 0／1 代碼中）。依組員確認，`2` 改為「停止營運」；輸出中「停止營運」19,962 列、「正常營運」7,205,172 列，筆數與重新編碼前一致。`ServiceType` 全為 `YouBike2`。
 - 輸出：`data/processed/youbike_rental_in_field_2024.parquet`，7,225,134 列 × 11 欄，44.2 MB（zstd），讀回後欄名、列數、時區與數值皆與寫出前一致。
-- SHA-256：`6d631d33567f9e7d662d8d605798c5b0890397a674d69b7081d6a4c91e618db1`
+- SHA-256：`9dddd818e7959dead9cb88073cfd6097f53245afb38ca125df768b2a5edc0a95`

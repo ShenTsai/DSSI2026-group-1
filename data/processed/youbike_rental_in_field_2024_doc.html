@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-10-17">
+
+<title>youbike_rental_in_field_2024_doc</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="youbike_rental_in_field_2024_doc_files/libs/clipboard/clipboard.min.js"></script>
+<script src="youbike_rental_in_field_2024_doc_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="youbike_rental_in_field_2024_doc_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="youbike_rental_in_field_2024_doc_files/libs/quarto-html/popper.min.js"></script>
+<script src="youbike_rental_in_field_2024_doc_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="youbike_rental_in_field_2024_doc_files/libs/quarto-html/anchor.min.js"></script>
+<link href="youbike_rental_in_field_2024_doc_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="youbike_rental_in_field_2024_doc_files/libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="youbike_rental_in_field_2024_doc_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="youbike_rental_in_field_2024_doc_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="youbike_rental_in_field_2024_doc_files/libs/bootstrap/bootstrap-917079515d91bccb85b543faf8aa8bb6.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">youbike_rental_in_field_2024_doc</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">October 17, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="data-description" class="level1">
+<h1>Data Description</h1>
+<ul>
+<li>Author: 待確認</li>
+<li>Date first created: 20261017</li>
+<li>Background: 2024 年臺北市 YouBike 2.0 站點即時車位歷史紀錄（交通部 TDX 平臺），只保留研究範圍（臺大／公館一帶多邊形）內的 78 個站點。本組研究臺大周遭站點的車輛數最適化調度，這份資料提供各站可借車數與可還空位的時間序列。</li>
+<li>Unit of observation: 站點 × 來源更新時間（<code>StationUID</code> × <code>SrcUpdateTime</code>），一列為一次站點狀態更新；兩者組合唯一。</li>
+<li>Sample period: 2024-01-01 00:01 至 2024-12-31 23:59（Asia/Taipei）；366 天中 356 天有資料。</li>
+<li>Known issues:
+<ul>
+<li><strong>10 天沒有資料</strong>：2024-10-31、11-01、11-02、11-03、11-07、11-08、11-09、11-10、11-11、12-10。原始檔為空或只有範圍外站點，不是處理時刪除的。</li>
+<li><strong>紀錄頻率不一致</strong>：2024-01-01 至 01-13 約每 1 分鐘一筆（每天約 100,000 列）；其餘日期大致只在站點狀態變動時才有紀錄（同站相鄰兩筆的間隔中位數約 2 分鐘，90% 分位約 10 分鐘），每天約 18,670 列。計算平均車數或使用頻率前，應先整理成固定時間間隔（例如每 10 分鐘取最後一筆狀態）。</li>
+<li><strong><code>ServiceStatus</code> 已重新編碼</strong>：原始資料有未列於 OAS 規格的代碼 <code>2</code>（19,962 列），依組員對照資料網站確認改為「停止營運」。停止營運時車數仍有數值（平均可借 1.4 輛），分析時通常應排除或另行處理。</li>
+<li><code>AvailableRentBikes</code> 幾乎總是等於 <code>GeneralBikes + ElectricBikes</code>，只有 2 列不一致。</li>
+<li><code>AvailableRentBikes + AvailableReturnBikes</code> 在同一站內不是固定值（可能因車柱故障等），不能直接當作站點容量。</li>
+<li><code>UpdateTime</code> 通常比 <code>SrcUpdateTime</code> 晚約 24 秒，但 3,663 列早幾秒，最大相差約 2.5 小時；時間分析以 <code>SrcUpdateTime</code> 為準。</li>
+</ul></li>
+<li>Definition for each variable:
+<ul>
+<li>定義取自 TDX OAS 規格（見 <a href="../raw/youbike_rental_codebook.md">raw codebook</a>），「本檔處理」欄記錄 <a href="../code/youbike_rental_in_field.Rmd">處理程式</a> 所做的改變；數值範圍來自下方 Summary Stats 的實際輸出。</li>
+</ul></li>
+</ul>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>R type</th>
+<th>Description</th>
+<th>Values / range</th>
+<th>本檔處理</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>StationUID</code></td>
+<td>character</td>
+<td>站點唯一識別代碼，{業管機關代碼} + {StationID}</td>
+<td>78 個值，皆以 <code>TPE</code> 開頭，皆屬於 <a href="stations_in_field.csv">stations_in_field.csv</a></td>
+<td>依此欄篩選研究範圍站點</td>
+</tr>
+<tr class="even">
+<td><code>StationID</code></td>
+<td>character</td>
+<td>站點代碼</td>
+<td>78 個值，等於 <code>StationUID</code> 去掉 <code>TPE</code></td>
+<td>以文字讀入，保留前導格式</td>
+</tr>
+<tr class="odd">
+<td><code>ServiceStatus</code></td>
+<td>character</td>
+<td>服務狀態</td>
+<td>「正常營運」7,205,172 列；「停止營運」19,962 列</td>
+<td>原始代碼 <code>2</code> 改為「停止營運」</td>
+</tr>
+<tr class="even">
+<td><code>ServiceType</code></td>
+<td>character</td>
+<td>服務類型</td>
+<td>全為 <code>YouBike2</code></td>
+<td>保留原始文字</td>
+</tr>
+<tr class="odd">
+<td><code>AvailableRentBikes</code></td>
+<td>integer</td>
+<td>可租借車數</td>
+<td>0–99</td>
+<td>文字轉整數</td>
+</tr>
+<tr class="even">
+<td><code>AvailableReturnBikes</code></td>
+<td>integer</td>
+<td>可歸還空位數</td>
+<td>0–99</td>
+<td>文字轉整數</td>
+</tr>
+<tr class="odd">
+<td><code>SrcUpdateTime</code></td>
+<td>POSIXct（Asia/Taipei）</td>
+<td>來源端平臺資料更新時間</td>
+<td>2024-01-01 00:01:07 至 2024-12-31 23:59:15</td>
+<td>ISO 8601 字串轉為時間</td>
+</tr>
+<tr class="even">
+<td><code>UpdateTime</code></td>
+<td>POSIXct（Asia/Taipei）</td>
+<td>TDX 資料更新時間</td>
+<td>2024-01-01 00:02:07 至 2024-12-31 23:59:51</td>
+<td>ISO 8601 字串轉為時間</td>
+</tr>
+<tr class="odd">
+<td><code>GeneralBikes</code></td>
+<td>integer</td>
+<td>一般自行車可租借車數</td>
+<td>0–99</td>
+<td>文字轉整數</td>
+</tr>
+<tr class="even">
+<td><code>ElectricBikes</code></td>
+<td>integer</td>
+<td>電動輔助車可租借車數</td>
+<td>0–38，多數為 0</td>
+<td>文字轉整數</td>
+</tr>
+<tr class="odd">
+<td><code>source_date</code></td>
+<td>Date</td>
+<td>該列所屬原始檔的日期（取自檔名）</td>
+<td>2024-01-01 至 2024-12-31，356 個日期；與 <code>SrcUpdateTime</code> 的日期一致</td>
+<td>新增欄位</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Data path: <code>data/processed/youbike_rental_in_field_2024.parquet</code> (the exact file this notebook reads)</li>
+<li>Source data: <code>data/raw/youbike_rental_raw/臺北市公共自行車站點剩餘數量歷史資料2024-MM-DD.CSV</code>（366 檔，逐檔路徑與 SHA-256 見 <code>data/code/youbike_rental_raw_manifest.csv</code>）；站點清單 <code>data/processed/stations_in_field.csv</code></li>
+<li>Processing code: <code>data/code/youbike_rental_in_field.Rmd</code></li>
+<li>Role: <code>analysis</code></li>
+<li>Verification status: 2026-10-17 以乾淨 R 程序 knit 本檔，下方 Assertions 全部通過（結果見文末「執行結果」）。</li>
+<li>SHA-256: <code>9dddd818e7959dead9cb88073cfd6097f53245afb38ca125df768b2a5edc0a95</code></li>
+<li>Downstream analysis input: <code>data/processed/youbike_rental_in_field_2024.parquet</code> (must equal Data path)</li>
+</ul>
+<p>Keep these paths and the <code>PROJECT-PROPOSAL.md</code> Data Artifacts row consistent. The source and processing links describe lineage; later finding notebooks read this exact processed file.</p>
+<p>讀取方式：<code>arrow::read_parquet()</code> 回傳一般 tibble，整數與含時區的時間型別會保留，不需另外設定欄位型別。</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(arrow)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>find_project_root <span class="ot">&lt;-</span> <span class="cf">function</span>(<span class="at">start =</span> <span class="fu">getwd</span>()) {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  candidate <span class="ot">&lt;-</span> <span class="fu">normalizePath</span>(start, <span class="at">winslash =</span> <span class="st">"/"</span>, <span class="at">mustWork =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">repeat</span> {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">file.exists</span>(<span class="fu">file.path</span>(candidate, <span class="st">"AGENTS.md"</span>)) <span class="sc">&amp;&amp;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="fu">dir.exists</span>(<span class="fu">file.path</span>(candidate, <span class="st">"templates"</span>))) <span class="fu">return</span>(candidate)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    parent <span class="ot">&lt;-</span> <span class="fu">dirname</span>(candidate)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">identical</span>(parent, candidate)) <span class="fu">stop</span>(<span class="st">"Open this notebook within the student project containing AGENTS.md and templates/."</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    candidate <span class="ot">&lt;-</span> parent</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>PROJECT_ROOT <span class="ot">&lt;-</span> <span class="fu">find_project_root</span>()</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>project_file <span class="ot">&lt;-</span> <span class="cf">function</span>(relative_path, area, <span class="at">must_exist =</span> <span class="cn">TRUE</span>) {</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Exact project-relative paths only; no first-file search or OS-root /data path.</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  parts <span class="ot">&lt;-</span> <span class="fu">strsplit</span>(relative_path, <span class="st">"/"</span>, <span class="at">fixed =</span> <span class="cn">TRUE</span>)[[<span class="dv">1</span>]]</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">grepl</span>(<span class="st">"^(/|~|[A-Za-z]:)"</span>, relative_path) <span class="sc">||</span> <span class="st">".."</span> <span class="sc">%in%</span> parts <span class="sc">||</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>      <span class="fu">grepl</span>(<span class="st">"&lt;"</span>, relative_path, <span class="at">fixed =</span> <span class="cn">TRUE</span>) <span class="sc">||</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>      <span class="sc">!</span><span class="fu">startsWith</span>(relative_path, <span class="fu">paste0</span>(<span class="st">"data/"</span>, area, <span class="st">"/"</span>))) {</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">stop</span>(<span class="st">"Replace the placeholder with an exact path inside data/"</span>, area, <span class="st">"/: "</span>, relative_path)</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  path <span class="ot">&lt;-</span> <span class="fu">file.path</span>(PROJECT_ROOT, relative_path)</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (must_exist <span class="sc">&amp;&amp;</span> (<span class="sc">!</span><span class="fu">file.exists</span>(path) <span class="sc">||</span> <span class="fu">dir.exists</span>(path))) <span class="fu">stop</span>(<span class="st">"Input file not found: "</span>, path)</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Resolve existing ancestors to reject a path that leaves the project via a symlink.</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>  ancestor <span class="ot">&lt;-</span> path</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  <span class="cf">while</span> (<span class="sc">!</span><span class="fu">file.exists</span>(ancestor)) ancestor <span class="ot">&lt;-</span> <span class="fu">dirname</span>(ancestor)</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  resolved <span class="ot">&lt;-</span> <span class="fu">normalizePath</span>(ancestor, <span class="at">winslash =</span> <span class="st">"/"</span>, <span class="at">mustWork =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  allowed <span class="ot">&lt;-</span> <span class="fu">normalizePath</span>(<span class="fu">file.path</span>(PROJECT_ROOT, <span class="st">"data"</span>, area), <span class="at">winslash =</span> <span class="st">"/"</span>, <span class="at">mustWork =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">startsWith</span>(allowed, <span class="fu">paste0</span>(PROJECT_ROOT, <span class="st">"/"</span>))) {</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    <span class="fu">stop</span>(<span class="st">"data/"</span>, area, <span class="st">"/ resolves outside the project root."</span>)</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">identical</span>(resolved, allowed) <span class="sc">&amp;&amp;</span> <span class="sc">!</span><span class="fu">startsWith</span>(resolved, <span class="fu">paste0</span>(allowed, <span class="st">"/"</span>))) {</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>    <span class="fu">stop</span>(<span class="st">"Resolved path leaves data/"</span>, area, <span class="st">"/: "</span>, relative_path)</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>  path</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>sha256_file <span class="ot">&lt;-</span> <span class="cf">function</span>(path) {</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">"digest"</span>, <span class="at">quietly =</span> <span class="cn">TRUE</span>)) {</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>    <span class="fu">stop</span>(<span class="st">"Cannot verify input identity: digest is unavailable. Use an available SHA-256 implementation before loading data."</span>)</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>  digest<span class="sc">::</span><span class="fu">digest</span>(<span class="at">file =</span> path, <span class="at">algo =</span> <span class="st">"sha256"</span>, <span class="at">serialize =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>verify_input_sha256 <span class="ot">&lt;-</span> <span class="cf">function</span>(path, expected) {</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Bind this run to the exact file inspected when the notebook was prepared.</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.character</span>(expected) <span class="sc">||</span> <span class="fu">length</span>(expected) <span class="sc">!=</span> <span class="dv">1</span>L <span class="sc">||</span> <span class="fu">is.na</span>(expected) <span class="sc">||</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>      <span class="sc">!</span><span class="fu">grepl</span>(<span class="st">"^[0-9a-fA-F]{64}$"</span>, expected)) {</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>    <span class="fu">stop</span>(<span class="st">"Fill the expected SHA-256 from the inspected input before loading data."</span>)</span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>  actual <span class="ot">&lt;-</span> <span class="fu">sha256_file</span>(path)</span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">identical</span>(actual, <span class="fu">tolower</span>(expected))) <span class="fu">stop</span>(<span class="st">"Input changed: identify the new version before loading "</span>, <span class="fu">basename</span>(path), <span class="st">"."</span>)</span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>  actual</span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="change-for-your-own-data" class="level2">
+<h2 class="anchored" data-anchor-id="change-for-your-own-data">Change for Your Own Data</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>INPUT_RELATIVE_PATH <span class="ot">&lt;-</span> <span class="st">"data/processed/youbike_rental_in_field_2024.parquet"</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>input_data_file <span class="ot">&lt;-</span> <span class="fu">project_file</span>(INPUT_RELATIVE_PATH, <span class="st">"processed"</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>EXPECTED_COLUMNS <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"StationUID"</span>, <span class="st">"StationID"</span>, <span class="st">"ServiceStatus"</span>, <span class="st">"ServiceType"</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">"AvailableRentBikes"</span>, <span class="st">"AvailableReturnBikes"</span>, <span class="st">"SrcUpdateTime"</span>, <span class="st">"UpdateTime"</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">"GeneralBikes"</span>, <span class="st">"ElectricBikes"</span>, <span class="st">"source_date"</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>EXPECTED_ROWS <span class="ot">&lt;-</span> <span class="dv">7225134</span>L <span class="co"># From the processing notebook's verified run.</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>EXPECTED_SHA256 <span class="ot">&lt;-</span> <span class="st">"9dddd818e7959dead9cb88073cfd6097f53245afb38ca125df768b2a5edc0a95"</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Station list used by the processing notebook, for the membership check.</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>STATIONS_RELATIVE_PATH <span class="ot">&lt;-</span> <span class="st">"data/processed/stations_in_field.csv"</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>stations_file <span class="ot">&lt;-</span> <span class="fu">project_file</span>(STATIONS_RELATIVE_PATH, <span class="st">"processed"</span>)</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>STATIONS_SHA256 <span class="ot">&lt;-</span> <span class="st">"e82732d9384b5bb8e0d1be02fe151331d78258fedbba7cc1418af35bd69309f7"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="summary" class="level2">
+<h2 class="anchored" data-anchor-id="summary">Summary</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>input_fingerprint <span class="ot">&lt;-</span> <span class="fu">verify_input_sha256</span>(input_data_file, EXPECTED_SHA256)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">read_parquet</span>(input_data_file)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>stations_fingerprint <span class="ot">&lt;-</span> <span class="fu">verify_input_sha256</span>(stations_file, STATIONS_SHA256)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>field_station_ids <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(stations_file, <span class="at">col_types =</span> <span class="fu">cols</span>(<span class="at">.default =</span> <span class="fu">col_character</span>())) <span class="sc">|&gt;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(StationUID) <span class="sc">|&gt;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unique</span>()</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">list</span>(<span class="at">data_path =</span> INPUT_RELATIVE_PATH, <span class="at">rows =</span> <span class="fu">nrow</span>(df),</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>           <span class="at">schema =</span> <span class="fu">map_chr</span>(df, \(column) <span class="fu">paste</span>(<span class="fu">class</span>(column), <span class="at">collapse =</span> <span class="st">"/"</span>)),</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>           <span class="at">sha256 =</span> input_fingerprint))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>$data_path
+[1] "data/processed/youbike_rental_in_field_2024.parquet"
+
+$rows
+[1] 7225134
+
+$schema
+          StationUID            StationID        ServiceStatus 
+         "character"          "character"          "character" 
+         ServiceType   AvailableRentBikes AvailableReturnBikes 
+         "character"            "integer"            "integer" 
+       SrcUpdateTime           UpdateTime         GeneralBikes 
+    "POSIXct/POSIXt"     "POSIXct/POSIXt"            "integer" 
+       ElectricBikes          source_date 
+           "integer"               "Date" 
+
+$sha256
+[1] "9dddd818e7959dead9cb88073cfd6097f53245afb38ca125df768b2a5edc0a95"</code></pre>
+</div>
+</div>
+<section id="sample" class="level3">
+<h3 class="anchored" data-anchor-id="sample">Sample</h3>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(df, <span class="dv">10</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 11
+   StationUID   StationID ServiceStatus ServiceType AvailableRentBikes
+   &lt;chr&gt;        &lt;chr&gt;     &lt;chr&gt;         &lt;chr&gt;                    &lt;int&gt;
+ 1 TPE500101005 500101005 正常營運      YouBike2                     0
+ 2 TPE500101005 500101005 正常營運      YouBike2                     0
+ 3 TPE500101005 500101005 正常營運      YouBike2                     0
+ 4 TPE500101005 500101005 正常營運      YouBike2                     0
+ 5 TPE500101005 500101005 正常營運      YouBike2                     0
+ 6 TPE500101005 500101005 正常營運      YouBike2                     0
+ 7 TPE500101005 500101005 正常營運      YouBike2                     0
+ 8 TPE500101005 500101005 正常營運      YouBike2                     0
+ 9 TPE500101005 500101005 正常營運      YouBike2                     0
+10 TPE500101005 500101005 正常營運      YouBike2                     0
+# ℹ 6 more variables: AvailableReturnBikes &lt;int&gt;, SrcUpdateTime &lt;dttm&gt;,
+#   UpdateTime &lt;dttm&gt;, GeneralBikes &lt;int&gt;, ElectricBikes &lt;int&gt;,
+#   source_date &lt;date&gt;</code></pre>
+</div>
+</div>
+</section>
+<section id="summary-stats" class="level3">
+<h3 class="anchored" data-anchor-id="summary-stats">Summary Stats</h3>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(df)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 7,225,134
+Columns: 11
+$ StationUID           &lt;chr&gt; "TPE500101005", "TPE500101005", "TPE500101005", "…
+$ StationID            &lt;chr&gt; "500101005", "500101005", "500101005", "500101005…
+$ ServiceStatus        &lt;chr&gt; "正常營運", "正常營運", "正常營運", "正常營運", "正常營運", "正常營運", "…
+$ ServiceType          &lt;chr&gt; "YouBike2", "YouBike2", "YouBike2", "YouBike2", "…
+$ AvailableRentBikes   &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1…
+$ AvailableReturnBikes &lt;int&gt; 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 1…
+$ SrcUpdateTime        &lt;dttm&gt; 2024-01-01 00:01:07, 2024-01-01 00:02:06, 2024-0…
+$ UpdateTime           &lt;dttm&gt; 2024-01-01 00:02:07, 2024-01-01 00:03:07, 2024-0…
+$ GeneralBikes         &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1…
+$ ElectricBikes        &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+$ source_date          &lt;date&gt; 2024-01-01, 2024-01-01, 2024-01-01, 2024-01-01, …</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(df)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     StationUID          StationID         ServiceStatus    
+ Length   :7225134   Length   :7225134   Length   :7225134  
+ N.unique :     78   N.unique :     78   N.unique :      2  
+ N.blank  :      0   N.blank  :      0   N.blank  :      0  
+ Min.nchar:     12   Min.nchar:      9   Min.nchar:      4  
+ Max.nchar:     12   Max.nchar:      9   Max.nchar:      4  
+                                                            
+    ServiceType      AvailableRentBikes AvailableReturnBikes
+ Length   :7225134   Min.   : 0.00      Min.   : 0.00       
+ N.unique :      1   1st Qu.: 2.00      1st Qu.: 7.00       
+ N.blank  :      0   Median : 7.00      Median :15.00       
+ Min.nchar:      8   Mean   :11.98      Mean   :20.03       
+ Max.nchar:      8   3rd Qu.:17.00      3rd Qu.:27.00       
+                     Max.   :99.00      Max.   :99.00       
+ SrcUpdateTime                   UpdateTime                   GeneralBikes  
+ Min.   :2024-01-01 00:01:07   Min.   :2024-01-01 00:02:07   Min.   : 0.00  
+ 1st Qu.:2024-03-05 13:43:20   1st Qu.:2024-03-05 13:43:38   1st Qu.: 2.00  
+ Median :2024-06-09 15:39:21   Median :2024-06-09 15:39:26   Median : 7.00  
+ Mean   :2024-06-14 04:57:39   Mean   :2024-06-14 04:58:08   Mean   :11.83  
+ 3rd Qu.:2024-09-18 08:43:17   3rd Qu.:2024-09-18 08:43:39   3rd Qu.:17.00  
+ Max.   :2024-12-31 23:59:15   Max.   :2024-12-31 23:59:51   Max.   :99.00  
+ ElectricBikes      source_date        
+ Min.   : 0.0000   Min.   :2024-01-01  
+ 1st Qu.: 0.0000   1st Qu.:2024-03-05  
+ Median : 0.0000   Median :2024-06-09  
+ Mean   : 0.1544   Mean   :2024-06-13  
+ 3rd Qu.: 0.0000   3rd Qu.:2024-09-18  
+ Max.   :38.0000   Max.   :2024-12-31  </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">colSums</span>(<span class="fu">is.na</span>(df))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          StationUID            StationID        ServiceStatus 
+                   0                    0                    0 
+         ServiceType   AvailableRentBikes AvailableReturnBikes 
+                   0                    0                    0 
+       SrcUpdateTime           UpdateTime         GeneralBikes 
+                   0                    0                    0 
+       ElectricBikes          source_date 
+                   0                    0 </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Categorical columns and coverage</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>df <span class="sc">|&gt;</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(ServiceStatus, ServiceType)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 3
+  ServiceStatus ServiceType       n
+  &lt;chr&gt;         &lt;chr&gt;         &lt;int&gt;
+1 停止營運      YouBike2      19962
+2 正常營運      YouBike2    7205172</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>df <span class="sc">|&gt;</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">stations =</span> <span class="fu">n_distinct</span>(StationUID),</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">days_with_rows =</span> <span class="fu">n_distinct</span>(source_date),</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">first_update =</span> <span class="fu">min</span>(SrcUpdateTime),</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">last_update =</span> <span class="fu">max</span>(SrcUpdateTime)</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 4
+  stations days_with_rows first_update        last_update        
+     &lt;int&gt;          &lt;int&gt; &lt;dttm&gt;              &lt;dttm&gt;             
+1       78            356 2024-01-01 00:01:07 2024-12-31 23:59:15</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Rows per station and per day</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>df <span class="sc">|&gt;</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(StationUID) <span class="sc">|&gt;</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">min_rows =</span> <span class="fu">min</span>(n), <span class="at">median_rows =</span> <span class="fu">median</span>(n), <span class="at">max_rows =</span> <span class="fu">max</span>(n))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 3
+  min_rows median_rows max_rows
+     &lt;int&gt;       &lt;dbl&gt;    &lt;int&gt;
+1    14177       88591   276010</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>df <span class="sc">|&gt;</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(source_date) <span class="sc">|&gt;</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">min_rows =</span> <span class="fu">min</span>(n), <span class="at">median_rows =</span> <span class="fu">median</span>(n), <span class="at">max_rows =</span> <span class="fu">max</span>(n))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 3
+  min_rows median_rows max_rows
+     &lt;int&gt;       &lt;dbl&gt;    &lt;int&gt;
+1       22       18670   103330</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Relationships described in Known issues (reported, not asserted)</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>update_lag_seconds <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(df<span class="sc">$</span>UpdateTime <span class="sc">-</span> df<span class="sc">$</span>SrcUpdateTime, <span class="at">units =</span> <span class="st">"secs"</span>)</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">rent_not_general_plus_electric =</span> <span class="fu">sum</span>(df<span class="sc">$</span>AvailableRentBikes <span class="sc">!=</span> df<span class="sc">$</span>GeneralBikes <span class="sc">+</span> df<span class="sc">$</span>ElectricBikes),</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">update_before_source =</span> <span class="fu">sum</span>(update_lag_seconds <span class="sc">&lt;</span> <span class="dv">0</span>),</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">median_update_lag_seconds =</span> <span class="fu">median</span>(update_lag_seconds),</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">max_update_lag_seconds =</span> <span class="fu">max</span>(update_lag_seconds)</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 4
+  rent_not_general_plus_electric update_before_source median_update_lag_seconds
+                           &lt;int&gt;                &lt;int&gt;                     &lt;dbl&gt;
+1                              2                 3663                        24
+# ℹ 1 more variable: max_update_lag_seconds &lt;dbl&gt;</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Bike availability while 停止營運</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>df <span class="sc">|&gt;</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(ServiceStatus) <span class="sc">|&gt;</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">rows =</span> <span class="fu">n</span>(),</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_rent_bikes =</span> <span class="fu">mean</span>(AvailableRentBikes),</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_return_docks =</span> <span class="fu">mean</span>(AvailableReturnBikes)</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 4
+  ServiceStatus    rows mean_rent_bikes mean_return_docks
+  &lt;chr&gt;           &lt;int&gt;           &lt;dbl&gt;             &lt;dbl&gt;
+1 停止營運        19962            1.44              18.9
+2 正常營運      7205172           12.0               20.0</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Dates with no rows</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>all_dates <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fu">as.Date</span>(<span class="st">"2024-01-01"</span>), <span class="fu">as.Date</span>(<span class="st">"2024-12-31"</span>), <span class="at">by =</span> <span class="st">"day"</span>)</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>all_dates[<span class="sc">!</span>all_dates <span class="sc">%in%</span> df<span class="sc">$</span>source_date]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "2024-10-31" "2024-11-01" "2024-11-02" "2024-11-03" "2024-11-07"
+ [6] "2024-11-08" "2024-11-09" "2024-11-10" "2024-11-11" "2024-12-10"</code></pre>
+</div>
+</div>
+</section>
+<section id="assertions" class="level3">
+<h3 class="anchored" data-anchor-id="assertions">Assertions</h3>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">identical</span>(<span class="fu">names</span>(df), EXPECTED_COLUMNS))</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">nrow</span>(df) <span class="sc">==</span> EXPECTED_ROWS)</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Types preserved by Parquet</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">all</span>(<span class="fu">map_lgl</span>(df[<span class="fu">c</span>(<span class="st">"StationUID"</span>, <span class="st">"StationID"</span>, <span class="st">"ServiceStatus"</span>, <span class="st">"ServiceType"</span>)], is.character)),</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">all</span>(<span class="fu">map_lgl</span>(df[<span class="fu">c</span>(<span class="st">"AvailableRentBikes"</span>, <span class="st">"AvailableReturnBikes"</span>, <span class="st">"GeneralBikes"</span>, <span class="st">"ElectricBikes"</span>)], is.integer)),</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inherits</span>(df<span class="sc">$</span>SrcUpdateTime, <span class="st">"POSIXct"</span>),</span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inherits</span>(df<span class="sc">$</span>UpdateTime, <span class="st">"POSIXct"</span>),</span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">identical</span>(<span class="fu">attr</span>(df<span class="sc">$</span>SrcUpdateTime, <span class="st">"tzone"</span>), <span class="st">"Asia/Taipei"</span>),</span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inherits</span>(df<span class="sc">$</span>source_date, <span class="st">"Date"</span>)</span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Key, coverage and allowed values set by the processing notebook</span></span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(</span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a>  <span class="sc">!</span><span class="fu">anyNA</span>(df),</span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a>  <span class="sc">!</span><span class="fu">anyDuplicated</span>(<span class="fu">select</span>(df, StationUID, SrcUpdateTime)),</span>
+<span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">all</span>(df<span class="sc">$</span>StationUID <span class="sc">%in%</span> field_station_ids),</span>
+<span id="cb27-19"><a href="#cb27-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">n_distinct</span>(df<span class="sc">$</span>StationUID) <span class="sc">==</span> <span class="fu">length</span>(field_station_ids),</span>
+<span id="cb27-20"><a href="#cb27-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">all</span>(df<span class="sc">$</span>StationID <span class="sc">==</span> <span class="fu">str_remove</span>(df<span class="sc">$</span>StationUID, <span class="st">"^TPE"</span>)),</span>
+<span id="cb27-21"><a href="#cb27-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">all</span>(df<span class="sc">$</span>ServiceStatus <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"正常營運"</span>, <span class="st">"停止營運"</span>)),</span>
+<span id="cb27-22"><a href="#cb27-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">all</span>(df<span class="sc">$</span>ServiceType <span class="sc">==</span> <span class="st">"YouBike2"</span>),</span>
+<span id="cb27-23"><a href="#cb27-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">all</span>(df<span class="sc">$</span>AvailableRentBikes <span class="sc">&gt;=</span> <span class="dv">0</span>),</span>
+<span id="cb27-24"><a href="#cb27-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">all</span>(df<span class="sc">$</span>AvailableReturnBikes <span class="sc">&gt;=</span> <span class="dv">0</span>),</span>
+<span id="cb27-25"><a href="#cb27-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">all</span>(df<span class="sc">$</span>GeneralBikes <span class="sc">&gt;=</span> <span class="dv">0</span>),</span>
+<span id="cb27-26"><a href="#cb27-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">all</span>(df<span class="sc">$</span>ElectricBikes <span class="sc">&gt;=</span> <span class="dv">0</span>),</span>
+<span id="cb27-27"><a href="#cb27-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">all</span>(<span class="fu">as.Date</span>(df<span class="sc">$</span>SrcUpdateTime, <span class="at">tz =</span> <span class="st">"Asia/Taipei"</span>) <span class="sc">==</span> df<span class="sc">$</span>source_date)</span>
+<span id="cb27-28"><a href="#cb27-28" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb27-29"><a href="#cb27-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-30"><a href="#cb27-30" aria-hidden="true" tabindex="-1"></a>actual_sha256 <span class="ot">&lt;-</span> <span class="fu">sha256_file</span>(input_data_file)</span>
+<span id="cb27-31"><a href="#cb27-31" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">identical</span>(actual_sha256, input_fingerprint)) <span class="fu">stop</span>(<span class="st">"File changed during documentation: inspect the new version."</span>)</span>
+<span id="cb27-32"><a href="#cb27-32" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">list</span>(<span class="at">data_path =</span> INPUT_RELATIVE_PATH, <span class="at">rows =</span> <span class="fu">nrow</span>(df), <span class="at">columns =</span> <span class="fu">names</span>(df),</span>
+<span id="cb27-33"><a href="#cb27-33" aria-hidden="true" tabindex="-1"></a>           <span class="at">sha256 =</span> actual_sha256,</span>
+<span id="cb27-34"><a href="#cb27-34" aria-hidden="true" tabindex="-1"></a>           <span class="at">status =</span> <span class="st">"configured checks passed"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>$data_path
+[1] "data/processed/youbike_rental_in_field_2024.parquet"
+
+$rows
+[1] 7225134
+
+$columns
+ [1] "StationUID"           "StationID"            "ServiceStatus"       
+ [4] "ServiceType"          "AvailableRentBikes"   "AvailableReturnBikes"
+ [7] "SrcUpdateTime"        "UpdateTime"           "GeneralBikes"        
+[10] "ElectricBikes"        "source_date"         
+
+$sha256
+[1] "9dddd818e7959dead9cb88073cfd6097f53245afb38ca125df768b2a5edc0a95"
+
+$status
+[1] "configured checks passed"</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="執行結果" class="level2">
+<h2 class="anchored" data-anchor-id="執行結果">執行結果</h2>
+<p>2026-10-17 以乾淨 R 程序（<code>Rscript --vanilla</code>，<code>knitr::knit()</code> 輸出至暫存位置）執行，所有 Assertions 通過。實際輸出摘要：</p>
+<ul>
+<li>7,225,134 列 × 11 欄，欄位型別與上方 codebook 一致；無缺值；(<code>StationUID</code>, <code>SrcUpdateTime</code>) 無重複；78 站全部屬於站點清單。</li>
+<li><code>ServiceStatus</code>：「正常營運」7,205,172 列、「停止營運」19,962 列。停止營運時平均可借 1.44 輛、可還 18.9 位；正常營運時為 12.0 與 20.0。</li>
+<li>每站列數 14,177–276,010（中位數 88,591）；每日列數 22–103,330（中位數 18,670）。</li>
+<li>沒有資料的日期：2024-10-31、11-01、11-02、11-03、11-07、11-08、11-09、11-10、11-11、12-10。</li>
+<li><code>AvailableRentBikes</code> ≠ <code>GeneralBikes + ElectricBikes</code> 共 2 列；<code>UpdateTime</code> 早於 <code>SrcUpdateTime</code> 共 3,663 列；兩者相差中位數 24 秒、最大 9,093 秒（約 2.5 小時）。</li>
+<li>SHA-256：<code>9dddd818e7959dead9cb88073cfd6097f53245afb38ca125df768b2a5edc0a95</code></li>
+</ul>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

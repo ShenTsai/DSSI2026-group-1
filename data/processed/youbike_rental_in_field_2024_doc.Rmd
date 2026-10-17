@@ -1,0 +1,259 @@
+---
+title: "youbike_rental_in_field_2024_doc"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Data Description
+- Author: 待確認
+- Date first created: 20261017
+- Background: 2024 年臺北市 YouBike 2.0 站點即時車位歷史紀錄（交通部 TDX 平臺），只保留研究範圍（臺大／公館一帶多邊形）內的 78 個站點。本組研究臺大周遭站點的車輛數最適化調度，這份資料提供各站可借車數與可還空位的時間序列。
+- Unit of observation: 站點 × 來源更新時間（`StationUID` × `SrcUpdateTime`），一列為一次站點狀態更新；兩者組合唯一。
+- Sample period: 2024-01-01 00:01 至 2024-12-31 23:59（Asia/Taipei）；366 天中 356 天有資料。
+- Known issues:
+    - **10 天沒有資料**：2024-10-31、11-01、11-02、11-03、11-07、11-08、11-09、11-10、11-11、12-10。原始檔為空或只有範圍外站點，不是處理時刪除的。
+    - **紀錄頻率不一致**：2024-01-01 至 01-13 約每 1 分鐘一筆（每天約 100,000 列）；其餘日期大致只在站點狀態變動時才有紀錄（同站相鄰兩筆的間隔中位數約 2 分鐘，90% 分位約 10 分鐘），每天約 18,670 列。計算平均車數或使用頻率前，應先整理成固定時間間隔（例如每 10 分鐘取最後一筆狀態）。
+    - **`ServiceStatus` 已重新編碼**：原始資料有未列於 OAS 規格的代碼 `2`（19,962 列），依組員對照資料網站確認改為「停止營運」。停止營運時車數仍有數值（平均可借 1.4 輛），分析時通常應排除或另行處理。
+    - `AvailableRentBikes` 幾乎總是等於 `GeneralBikes + ElectricBikes`，只有 2 列不一致。
+    - `AvailableRentBikes + AvailableReturnBikes` 在同一站內不是固定值（可能因車柱故障等），不能直接當作站點容量。
+    - `UpdateTime` 通常比 `SrcUpdateTime` 晚約 24 秒，但 3,663 列早幾秒，最大相差約 2.5 小時；時間分析以 `SrcUpdateTime` 為準。
+- Definition for each variable:
+    - 定義取自 TDX OAS 規格（見 [raw codebook](../raw/youbike_rental_codebook.md)），「本檔處理」欄記錄 [處理程式](../code/youbike_rental_in_field.Rmd) 所做的改變；數值範圍來自下方 Summary Stats 的實際輸出。
+
+| Field | R type | Description | Values / range | 本檔處理 |
+| --- | --- | --- | --- | --- |
+| `StationUID` | character | 站點唯一識別代碼，{業管機關代碼} + {StationID} | 78 個值，皆以 `TPE` 開頭，皆屬於 [stations_in_field.csv](stations_in_field.csv) | 依此欄篩選研究範圍站點 |
+| `StationID` | character | 站點代碼 | 78 個值，等於 `StationUID` 去掉 `TPE` | 以文字讀入，保留前導格式 |
+| `ServiceStatus` | character | 服務狀態 | 「正常營運」7,205,172 列；「停止營運」19,962 列 | 原始代碼 `2` 改為「停止營運」 |
+| `ServiceType` | character | 服務類型 | 全為 `YouBike2` | 保留原始文字 |
+| `AvailableRentBikes` | integer | 可租借車數 | 0–99 | 文字轉整數 |
+| `AvailableReturnBikes` | integer | 可歸還空位數 | 0–99 | 文字轉整數 |
+| `SrcUpdateTime` | POSIXct（Asia/Taipei） | 來源端平臺資料更新時間 | 2024-01-01 00:01:07 至 2024-12-31 23:59:15 | ISO 8601 字串轉為時間 |
+| `UpdateTime` | POSIXct（Asia/Taipei） | TDX 資料更新時間 | 2024-01-01 00:02:07 至 2024-12-31 23:59:51 | ISO 8601 字串轉為時間 |
+| `GeneralBikes` | integer | 一般自行車可租借車數 | 0–99 | 文字轉整數 |
+| `ElectricBikes` | integer | 電動輔助車可租借車數 | 0–38，多數為 0 | 文字轉整數 |
+| `source_date` | Date | 該列所屬原始檔的日期（取自檔名） | 2024-01-01 至 2024-12-31，356 個日期；與 `SrcUpdateTime` 的日期一致 | 新增欄位 |
+
+- Data path: `data/processed/youbike_rental_in_field_2024.parquet` (the exact file this notebook reads)
+- Source data: `data/raw/youbike_rental_raw/臺北市公共自行車站點剩餘數量歷史資料2024-MM-DD.CSV`（366 檔，逐檔路徑與 SHA-256 見 `data/code/youbike_rental_raw_manifest.csv`）；站點清單 `data/processed/stations_in_field.csv`
+- Processing code: `data/code/youbike_rental_in_field.Rmd`
+- Role: `analysis`
+- Verification status: 2026-10-17 以乾淨 R 程序 knit 本檔，下方 Assertions 全部通過（結果見文末「執行結果」）。
+- SHA-256: `9dddd818e7959dead9cb88073cfd6097f53245afb38ca125df768b2a5edc0a95`
+- Downstream analysis input: `data/processed/youbike_rental_in_field_2024.parquet` (must equal Data path)
+
+Keep these paths and the `PROJECT-PROPOSAL.md` Data Artifacts row consistent. The source
+and processing links describe lineage; later finding notebooks read this exact
+processed file.
+
+讀取方式：`arrow::read_parquet()` 回傳一般 tibble，整數與含時區的時間型別會保留，不需另外設定欄位型別。
+
+```{r}
+library(tidyverse)
+library(arrow)
+
+find_project_root <- function(start = getwd()) {
+  candidate <- normalizePath(start, winslash = "/", mustWork = TRUE)
+  repeat {
+    if (file.exists(file.path(candidate, "AGENTS.md")) &&
+        dir.exists(file.path(candidate, "templates"))) return(candidate)
+    parent <- dirname(candidate)
+    if (identical(parent, candidate)) stop("Open this notebook within the student project containing AGENTS.md and templates/.")
+    candidate <- parent
+  }
+}
+PROJECT_ROOT <- find_project_root()
+
+project_file <- function(relative_path, area, must_exist = TRUE) {
+  # Exact project-relative paths only; no first-file search or OS-root /data path.
+  parts <- strsplit(relative_path, "/", fixed = TRUE)[[1]]
+  if (grepl("^(/|~|[A-Za-z]:)", relative_path) || ".." %in% parts ||
+      grepl("<", relative_path, fixed = TRUE) ||
+      !startsWith(relative_path, paste0("data/", area, "/"))) {
+    stop("Replace the placeholder with an exact path inside data/", area, "/: ", relative_path)
+  }
+  path <- file.path(PROJECT_ROOT, relative_path)
+  if (must_exist && (!file.exists(path) || dir.exists(path))) stop("Input file not found: ", path)
+  # Resolve existing ancestors to reject a path that leaves the project via a symlink.
+  ancestor <- path
+  while (!file.exists(ancestor)) ancestor <- dirname(ancestor)
+  resolved <- normalizePath(ancestor, winslash = "/", mustWork = TRUE)
+  allowed <- normalizePath(file.path(PROJECT_ROOT, "data", area), winslash = "/", mustWork = TRUE)
+  if (!startsWith(allowed, paste0(PROJECT_ROOT, "/"))) {
+    stop("data/", area, "/ resolves outside the project root.")
+  }
+  if (!identical(resolved, allowed) && !startsWith(resolved, paste0(allowed, "/"))) {
+    stop("Resolved path leaves data/", area, "/: ", relative_path)
+  }
+  path
+}
+
+sha256_file <- function(path) {
+  if (!requireNamespace("digest", quietly = TRUE)) {
+    stop("Cannot verify input identity: digest is unavailable. Use an available SHA-256 implementation before loading data.")
+  }
+  digest::digest(file = path, algo = "sha256", serialize = FALSE)
+}
+
+verify_input_sha256 <- function(path, expected) {
+  # Bind this run to the exact file inspected when the notebook was prepared.
+  if (!is.character(expected) || length(expected) != 1L || is.na(expected) ||
+      !grepl("^[0-9a-fA-F]{64}$", expected)) {
+    stop("Fill the expected SHA-256 from the inspected input before loading data.")
+  }
+  actual <- sha256_file(path)
+  if (!identical(actual, tolower(expected))) stop("Input changed: identify the new version before loading ", basename(path), ".")
+  actual
+}
+```
+
+## Change for Your Own Data
+
+```{r}
+INPUT_RELATIVE_PATH <- "data/processed/youbike_rental_in_field_2024.parquet"
+input_data_file <- project_file(INPUT_RELATIVE_PATH, "processed")
+EXPECTED_COLUMNS <- c(
+  "StationUID", "StationID", "ServiceStatus", "ServiceType",
+  "AvailableRentBikes", "AvailableReturnBikes", "SrcUpdateTime", "UpdateTime",
+  "GeneralBikes", "ElectricBikes", "source_date"
+)
+EXPECTED_ROWS <- 7225134L # From the processing notebook's verified run.
+EXPECTED_SHA256 <- "9dddd818e7959dead9cb88073cfd6097f53245afb38ca125df768b2a5edc0a95"
+
+# Station list used by the processing notebook, for the membership check.
+STATIONS_RELATIVE_PATH <- "data/processed/stations_in_field.csv"
+stations_file <- project_file(STATIONS_RELATIVE_PATH, "processed")
+STATIONS_SHA256 <- "e82732d9384b5bb8e0d1be02fe151331d78258fedbba7cc1418af35bd69309f7"
+```
+
+## Summary
+
+```{r}
+input_fingerprint <- verify_input_sha256(input_data_file, EXPECTED_SHA256)
+df <- read_parquet(input_data_file)
+
+stations_fingerprint <- verify_input_sha256(stations_file, STATIONS_SHA256)
+field_station_ids <- read_csv(stations_file, col_types = cols(.default = col_character())) |>
+  pull(StationUID) |>
+  unique()
+
+print(list(data_path = INPUT_RELATIVE_PATH, rows = nrow(df),
+           schema = map_chr(df, \(column) paste(class(column), collapse = "/")),
+           sha256 = input_fingerprint))
+```
+
+### Sample
+
+```{r}
+head(df, 10)
+```
+
+### Summary Stats
+
+```{r}
+glimpse(df)
+summary(df)
+colSums(is.na(df))
+```
+
+```{r}
+# Categorical columns and coverage
+df |>
+  count(ServiceStatus, ServiceType)
+
+df |>
+  summarise(
+    stations = n_distinct(StationUID),
+    days_with_rows = n_distinct(source_date),
+    first_update = min(SrcUpdateTime),
+    last_update = max(SrcUpdateTime)
+  )
+
+# Rows per station and per day
+df |>
+  count(StationUID) |>
+  summarise(min_rows = min(n), median_rows = median(n), max_rows = max(n))
+
+df |>
+  count(source_date) |>
+  summarise(min_rows = min(n), median_rows = median(n), max_rows = max(n))
+```
+
+```{r}
+# Relationships described in Known issues (reported, not asserted)
+update_lag_seconds <- as.numeric(df$UpdateTime - df$SrcUpdateTime, units = "secs")
+
+tibble(
+  rent_not_general_plus_electric = sum(df$AvailableRentBikes != df$GeneralBikes + df$ElectricBikes),
+  update_before_source = sum(update_lag_seconds < 0),
+  median_update_lag_seconds = median(update_lag_seconds),
+  max_update_lag_seconds = max(update_lag_seconds)
+)
+
+# Bike availability while 停止營運
+df |>
+  group_by(ServiceStatus) |>
+  summarise(
+    rows = n(),
+    mean_rent_bikes = mean(AvailableRentBikes),
+    mean_return_docks = mean(AvailableReturnBikes)
+  )
+
+# Dates with no rows
+all_dates <- seq(as.Date("2024-01-01"), as.Date("2024-12-31"), by = "day")
+all_dates[!all_dates %in% df$source_date]
+```
+
+### Assertions
+
+```{r}
+stopifnot(identical(names(df), EXPECTED_COLUMNS))
+stopifnot(nrow(df) == EXPECTED_ROWS)
+
+# Types preserved by Parquet
+stopifnot(
+  all(map_lgl(df[c("StationUID", "StationID", "ServiceStatus", "ServiceType")], is.character)),
+  all(map_lgl(df[c("AvailableRentBikes", "AvailableReturnBikes", "GeneralBikes", "ElectricBikes")], is.integer)),
+  inherits(df$SrcUpdateTime, "POSIXct"),
+  inherits(df$UpdateTime, "POSIXct"),
+  identical(attr(df$SrcUpdateTime, "tzone"), "Asia/Taipei"),
+  inherits(df$source_date, "Date")
+)
+
+# Key, coverage and allowed values set by the processing notebook
+stopifnot(
+  !anyNA(df),
+  !anyDuplicated(select(df, StationUID, SrcUpdateTime)),
+  all(df$StationUID %in% field_station_ids),
+  n_distinct(df$StationUID) == length(field_station_ids),
+  all(df$StationID == str_remove(df$StationUID, "^TPE")),
+  all(df$ServiceStatus %in% c("正常營運", "停止營運")),
+  all(df$ServiceType == "YouBike2"),
+  all(df$AvailableRentBikes >= 0),
+  all(df$AvailableReturnBikes >= 0),
+  all(df$GeneralBikes >= 0),
+  all(df$ElectricBikes >= 0),
+  all(as.Date(df$SrcUpdateTime, tz = "Asia/Taipei") == df$source_date)
+)
+
+actual_sha256 <- sha256_file(input_data_file)
+if (!identical(actual_sha256, input_fingerprint)) stop("File changed during documentation: inspect the new version.")
+print(list(data_path = INPUT_RELATIVE_PATH, rows = nrow(df), columns = names(df),
+           sha256 = actual_sha256,
+           status = "configured checks passed"))
+```
+
+## 執行結果
+
+2026-10-17 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）執行，所有 Assertions 通過。實際輸出摘要：
+
+- 7,225,134 列 × 11 欄，欄位型別與上方 codebook 一致；無缺值；(`StationUID`, `SrcUpdateTime`) 無重複；78 站全部屬於站點清單。
+- `ServiceStatus`：「正常營運」7,205,172 列、「停止營運」19,962 列。停止營運時平均可借 1.44 輛、可還 18.9 位；正常營運時為 12.0 與 20.0。
+- 每站列數 14,177–276,010（中位數 88,591）；每日列數 22–103,330（中位數 18,670）。
+- 沒有資料的日期：2024-10-31、11-01、11-02、11-03、11-07、11-08、11-09、11-10、11-11、12-10。
+- `AvailableRentBikes` ≠ `GeneralBikes + ElectricBikes` 共 2 列；`UpdateTime` 早於 `SrcUpdateTime` 共 3,663 列；兩者相差中位數 24 秒、最大 9,093 秒（約 2.5 小時）。
+- SHA-256：`9dddd818e7959dead9cb88073cfd6097f53245afb38ca125df768b2a5edc0a95`
