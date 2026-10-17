@@ -70,6 +70,3 @@ stations_in_field <- station_positions_sf |>
   arrange(StationID)
 
 write_csv(stations_in_field, "data/processed/stations_in_field.csv")
-
-excluded <- ntu_stations_position |> 
-  anti_join(stations_in_field, by = "StationUID")

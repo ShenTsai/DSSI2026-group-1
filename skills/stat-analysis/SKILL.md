@@ -11,7 +11,7 @@ Turn the student's research question and data into a reproducible finding using 
 
 Read only what the current task needs:
 
-- the student's request, explicit preferences, and relevant `Data Artifacts` rows in `PROJECT.md`;
+- the student's request, explicit preferences, and relevant `Data Artifacts` rows in `PROJECT-PROPOSAL.md`;
 - [shared finding rules](../../FINDING-RULES.md);
 - relevant input documentation, processing code, and existing findings;
 - the [Jupyter template](../../templates/finding/template-stat-analysis.ipynb) or [R Markdown template](../../templates/finding/template-stat-analysis.Rmd), after the student chooses the format;
@@ -26,7 +26,7 @@ Create or revise the student's chosen `.ipynb` or `.Rmd` in `finding/`; the inst
 Keep the finding's code, actual results, explanations, and supporting figures consistent when revising it. If HTML is explicitly requested, check that export against the source. Keep supporting figures under a related local asset folder if needed. Follow the shared rules for portable paths, execution status, and the course's GitHub handoff requirement. Students first create their own repository and perform stage, commit, and push themselves in VS Code; the AI prepares files and a suggested commit message, then checks status and actual references read-only after the student acts. Keep uncommitted work `待提交`, and distinguish a local commit from verified GitHub delivery.
 
 For narrative text, follow the student's explicit report-language choice in chat
-or `PROJECT.md`; otherwise use the teacher default: Traditional Chinese as used
+or `PROJECT-PROPOSAL.md`; otherwise use the teacher default: Traditional Chinese as used
 in Taiwan (`zh-TW`), with Taiwan-local terminology and phrasing. Do not ask for a
 language choice or delay work when none is specified. If recorded, label this as
 a teacher default, not an explicit student answer. Retain the template's original
@@ -65,12 +65,12 @@ Required summary statistics:
 
 Follow `資料銜接與檔案驗證` in [shared finding rules](../../FINDING-RULES.md). This is a data handoff check, not a requirement to repeat upstream preparation.
 
-- Use the student's explicitly identified dataset, or a `PROJECT.md` → `Data Artifacts` row whose sample, variables, and role match the research question. Inspect the row's data file and linked documentation. Do not select the newest file or the first CSV returned by a glob. If several candidates remain materially plausible, ask which sample/version the student intends before analysis.
+- Use the student's explicitly identified dataset, or a `PROJECT-PROPOSAL.md` → `Data Artifacts` row whose sample, variables, and role match the research question. Inspect the row's data file and linked documentation. Do not select the newest file or the first CSV returned by a glob. If several candidates remain materially plausible, ask which sample/version the student intends before analysis.
 - Resolve the exact file under this project's `data/processed/`. Check existence, schema, required columns, observation unit, documented key/uniqueness expectations, and applicable sample role. Compute SHA-256 from the actual file bytes and compare it with the registered verified hash. A matching hash establishes file identity; documentation and schema checks establish suitability.
 - If the student clearly identified a usable prepared file but its index row or hash is missing, verify the file and record its exact path, documentation, role, verification status, and actual hash in `Data Artifacts`. Use [processed-data-documentation](../processed-data-documentation/SKILL.md) when documentation needs completion. An externally prepared dataset may record its processing notebook as `not available`; do not invent upstream code or require unnecessary cleaning just to fill that field.
 - If a registered hash differs, do not silently replace the expected hash or switch inputs. Determine whether the current authorized task produced or requested a new version; when supported by the provenance, reverify it and update the index and this analysis's bindings. Ask only when the intended version cannot be established. Do not continue analysis against an unresolved mismatch.
 - In the generated notebook, bind each input to its verified exact project-relative path and expected SHA-256. Resolve the project root portably, check existence and hash before loading, then validate the needed schema/key assumptions before analysis. Fail clearly on missing files, changed bytes, or incompatible structure; never fall back to another file. The documented input path and the read statement must refer to the same file.
-- A changed dataset can make prior findings stale. Identify existing findings known to use the previous path/hash. Update and rerun their selected notebook only when reanalysis is part of the student's task, refreshing an HTML export only if explicitly requested; otherwise report which existing findings still use the earlier data and need reanalysis. Updating `PROJECT.md` alone does not update their results.
+- A changed dataset can make prior findings stale. Identify existing findings known to use the previous path/hash. Update and rerun their selected notebook only when reanalysis is part of the student's task, refreshing an HTML export only if explicitly requested; otherwise report which existing findings still use the earlier data and need reanalysis. Updating `PROJECT-PROPOSAL.md` alone does not update their results.
 
 ## Figures, tables, and regression results
 

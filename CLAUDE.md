@@ -9,7 +9,8 @@
 ## 專案與任務入口
 
 - 專案根目錄是同時含有本檔、`AGENTS.md`、`skills/` 與 `templates/` 的本組 repo，資料夾名稱不必是 `econ-5166-student-kit/`。依原有規則辨識根目錄，保留 `AGENTS.md` 作為資料流程的定位依據。
-- 依任務讀取 `PROJECT.md` 中相關的研究脈絡、學生偏好、組員分工與資料索引。以專案紀錄和當次已確認資訊銜接工作，不以個人記憶推定目前對話學生的身分或責任。
+- 本組已停用 `PROJECT.md`，改由 `PROJECT-PROPOSAL.md` 兼任專案紀錄：第 1–6 節為提案，`Team` 表在第 6 節，其餘紀錄表在文末附錄。不要重新建立 `PROJECT.md`。
+- 依任務讀取 `PROJECT-PROPOSAL.md` 中相關的研究脈絡、學生偏好、組員分工與資料索引。以專案紀錄和當次已確認資訊銜接工作，不以個人記憶推定目前對話學生的身分或責任。
 - 依 `AGENTS.md` 的任務對照表選用 `skills/<名稱>/SKILL.md`；資料、finding 與提案工作依相應技能讀取 `FINDING-RULES.md` 及所需範本，不預先載入全部技能和範本。
 
 ## Claude 技能入口

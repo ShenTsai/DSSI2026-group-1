@@ -10,20 +10,20 @@
 
 1. 準備好 GitHub 帳號、Git 與 VS Code。學生在 GitHub 選 **New repository**，確認 Owner、名稱，按教師要求選擇公開／私人設定後建立本組 repo。使用全新的空 repo，不先加入 README、`.gitignore` 或 license，稍後由工作包帶入。小組共用 repo 時，由建立者設定組員需要的存取權限。[GitHub 建立 repo 說明](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository)
 2. 在 VS Code 開啟命令選擇區（macOS：`Cmd+Shift+P`；Windows：`Ctrl+Shift+P`），執行 **Git: Clone**，貼上剛建立的 repo URL，選擇本機存放位置，再按 **Open**。已 clone 過時直接開啟該資料夾。[VS Code clone 說明](https://code.visualstudio.com/docs/sourcecontrol/quickstart#_option-a-clone-a-repository-locally)
-3. 將教師工作包 `econ-5166-student-kit/` **裡面的完整內容**複製到 clone 出來的資料夾根目錄，包含 `.gitignore`、`.claude/` 等隱藏項目；`.claude/` 是 Claude 的技能入口，與共用規範都要保留。根目錄應直接看得到 `AGENTS.md`、`CLAUDE.md`、`PROJECT.md`、`skills/` 與 `templates/`，不要再多包一層 `econ-5166-student-kit/`。保留 clone 產生的 `.git/`，不要複製或覆蓋任何來源 repo 的 `.git/`。
+3. 將教師工作包 `econ-5166-student-kit/` **裡面的完整內容**複製到 clone 出來的資料夾根目錄，包含 `.gitignore`、`.claude/` 等隱藏項目；`.claude/` 是 Claude 的技能入口，與共用規範都要保留。根目錄應直接看得到 `AGENTS.md`、`CLAUDE.md`、`PROJECT-PROPOSAL.md`、`skills/` 與 `templates/`，不要再多包一層 `econ-5166-student-kit/`。保留 clone 產生的 `.git/`，不要複製或覆蓋任何來源 repo 的 `.git/`。
 4. 在 VS Code **Source Control（原始檔控制）**確認選到本組 repo 與預定分支，核對遠端 `origin` 指向剛建立的 GitHub repo。依下一節操作，完成工作包的第一次 commit 與 push。若出現 **Publish Branch**，確認它要發佈到既有的本組 `origin`；不要另外建立第二個 repo。
 
 資料夾名稱可以是本組的 repo 名稱。以下所有 `data/`、`skills/` 等路徑，都相對於這個根目錄。每位組員使用自己的 Git 身分與 GitHub 登入，在自己的電腦 clone 同一個小組 repo；姓名與實際分工仍由學生提供。
 
-建立後在 `PROJECT.md` 的 **Repository Context** 記錄已確認的 repo URL、`origin`、工作／提交分支與設定狀態；最近 push 的核對結果按實際證據更新。空白範本不代表已有 repo 或已完成 push。
+建立後在 `PROJECT-PROPOSAL.md` 的 **Repository Context** 記錄已確認的 repo URL、`origin`、工作／提交分支與設定狀態；最近 push 的核對結果按實際證據更新。空白範本不代表已有 repo 或已完成 push。
 
 ### 在本組 repo 開始研究
 
 1. 在使用中的 AI 工具開啟 **本組 repo 根目錄**（看得到 `AGENTS.md`、`CLAUDE.md`、`skills/` 與 `templates/` 的那一層）。AI 依已知的模型與工具選擇 Agent 入口；無法確認時才詢問，方式見下方說明。
-2. **每組預設 3–4 位學生**，以本組已確認的實際名單為準。提供全組成員姓名、各自已確認的實際工作，並說明目前對話的你是哪位。AI 先沿用對話或 `PROJECT.md` 中已確認的資訊，只主動補問缺少的部分；分工未定時保留「待確認」，不自行填入作者或分工。
+2. **每組預設 3–4 位學生**，以本組已確認的實際名單為準。提供全組成員姓名、各自已確認的實際工作，並說明目前對話的你是哪位。AI 先沿用對話或 `PROJECT-PROPOSAL.md` 中已確認的資訊，只主動補問缺少的部分；分工未定時保留「待確認」，不自行填入作者或分工。
 3. 把原始資料放進 `data/raw/`，或在對話中提供可讀取的檔案與來源說明。已整理資料可放 `data/processed/`，AI 仍會檢查資料結構與文件。
 4. 先用自己的話說明關心的現象或初步疑問，以及為什麼想研究；不必一開始就有成熟、正式的研究題目。再參照下面的指令提出任務。作者、資料意義與其他關鍵資訊不明時，AI 會詢問。
-5. 工具格式未指定時，回答 Python／Jupyter 或 R／R Markdown；AI 會記在本組 `PROJECT.md`。報告預設繁體中文與台灣用語，想用其他語言時可直接指定。
+5. 工具格式未指定時，回答 Python／Jupyter 或 R／R Markdown；AI 會記在本組 `PROJECT-PROPOSAL.md`。報告預設繁體中文與台灣用語，想用其他語言時可直接指定。
 6. 直接檢閱選定的 **`.ipynb` 或 `.Rmd`**，確認程式、已核對的發現與實際執行狀態。教師直接驗收這份文件，不要求 HTML；只有另外提出匯出要求時才產生 HTML。
 
 工作包目前包含 16 個技能，集中在 `skills/`，範本集中在 `templates/`。`AGENTS.md` 會依任務指引 AI 讀取相應的 `skills/<名稱>/SKILL.md`；Claude Code 由 `CLAUDE.md` 匯入同一份規範。你也可以直接指定技能檔案；技能清單是否出現在介面中，不影響依檔案指令使用這份工作包。
@@ -34,13 +34,13 @@
 
 Demo 或代做以該次明確授權的範圍為限。例如「示範分工」只授權示範分工，不代表可以代選研究設計或完成整份提案；若明確要求完整 Demo，假設與示範內容會標示清楚，後續一般學生使用仍回到討論流程。
 
-研究定義、資料處理方式、模型設定或作者等資訊不確定時，AI 會先與你討論，再進行依賴該設定的工作。**姓名與負責工作由學生提供，角色分工由學生決定**；AI 在學生開始使用時主動確認全組名單、各自已確認的實際工作及目前對話者，只問未知資訊，不自行指派 PM／DE／DA 或其他職責。3–4 位學生是預設值，已確認的人數不同時依實際名單記錄，不為符合預設補造或刪除成員；`PROJECT.md` 的 `Team` 表按確認名單一人一列。
+研究定義、資料處理方式、模型設定或作者等資訊不確定時，AI 會先與你討論，再進行依賴該設定的工作。**姓名與負責工作由學生提供，角色分工由學生決定**；AI 在學生開始使用時主動確認全組名單、各自已確認的實際工作及目前對話者，只問未知資訊，不自行指派 PM／DE／DA 或其他職責。3–4 位學生是預設值，已確認的人數不同時依實際名單記錄，不為符合預設補造或刪除成員；`PROJECT-PROPOSAL.md` 的 `Team` 表按確認名單一人一列。
 
 AI 不從 Git 作者、電腦帳號、檔名、範本示例或「誰提供檔案」猜測作者與責任，不把目前對話的學生自動列為既有文件作者，也不為這項確認額外要求學號或 GitHub 帳號。缺少資訊時會先問，不只是留下空白；等待回答或依要求先做草稿時，未確認欄位保留「待學生填寫／待補」，可繼續不依賴歸屬的資料檢查或討論。已確認的選擇與繁體中文預設會沿用。
 
 授課用簡報原始檔：[student-kit-slides.qmd](student-kit-slides.qmd)，可在 RStudio 預覽。
 
-**上課原則：所有 contribution 都必須記錄成 commit。** 程式、資料處理、文件、提案與專案紀錄的修改都要保留提交紀錄，並隨成果更新 `PROJECT.md` 的 `Key Contributions` 表：**誰、做了什麼、commit reference**。外部成果須有已 commit 的說明或連結紀錄。尚未 commit 標示「待提交」，reference 尚未核對標示「待核對」；兩者都不算完成貢獻紀錄，檔案連結不能取代 commit。commit 次數不作為貢獻評分。
+**上課原則：所有 contribution 都必須記錄成 commit。** 程式、資料處理、文件、提案與專案紀錄的修改都要保留提交紀錄，並隨成果更新 `PROJECT-PROPOSAL.md` 的 `Key Contributions` 表：**誰、做了什麼、commit reference**。外部成果須有已 commit 的說明或連結紀錄。尚未 commit 標示「待提交」，reference 尚未核對標示「待核對」；兩者都不算完成貢獻紀錄，檔案連結不能取代 commit。commit 次數不作為貢獻評分。
 
 ## 學生在 VS Code 手動 commit 與 push
 
@@ -56,7 +56,7 @@ AI 完成任務後，會列出修改檔案、驗證結果、建議 commit 訊息
 
 ### 回填貢獻紀錄與提交狀態
 
-學生完成提交後，提供 commit 連結或 SHA；AI 可唯讀查看相應 commit 的 diff，核對它確實包含所描述的成果，再回填 `PROJECT.md` 的 `Key Contributions`。無法讀取或核對的 reference 標示「待核對」，不填入臆測或無關的 SHA。
+學生完成提交後，提供 commit 連結或 SHA；AI 可唯讀查看相應 commit 的 diff，核對它確實包含所描述的成果，再回填 `PROJECT-PROPOSAL.md` 的 `Key Contributions`。無法讀取或核對的 reference 標示「待核對」，不填入臆測或無關的 SHA。
 
 | 可確認的狀態 | 紀錄方式 |
 | --- | --- |
@@ -68,7 +68,7 @@ AI 完成任務後，會列出修改檔案、驗證結果、建議 commit 訊息
 
 學生自述已 push、僅提供 GitHub 形式的網址，或本機留有舊的遠端分支紀錄時，AI 會說明證據來源，未親自核對遠端就保留「遠端待核對」。沒有遠端讀取權限時，也可先完成本機內容核對。
 
-**回填索引採下一次提交，不追逐同一份文件自己的 SHA。** 例如成果 commit 為 A，核對後將 A 填入 `PROJECT.md`，再由學生將這次索引更新 commit 為 B 並 push。A 繼續指向原成果，不改成 B；B 已記錄索引維護本身，不必再新增一列只為引用 B 而產生下一個 commit。具有獨立實質內容的專案脈絡更新仍須記錄成貢獻。每次交付都分別說明成果與尚未提交的索引狀態。
+**回填索引採下一次提交，不追逐同一份文件自己的 SHA。** 例如成果 commit 為 A，核對後將 A 填入 `PROJECT-PROPOSAL.md`，再由學生將這次索引更新 commit 為 B 並 push。A 繼續指向原成果，不改成 B；B 已記錄索引維護本身，不必再新增一列只為引用 B 而產生下一個 commit。具有獨立實質內容的專案脈絡更新仍須記錄成貢獻。每次交付都分別說明成果與尚未提交的索引狀態。
 
 ## 依使用模型選擇 Agent
 
@@ -83,7 +83,7 @@ AI 完成任務後，會列出修改檔案、驗證結果、建議 commit 訊息
 
 模型家族已知時依家族選入口，不必追問完整版本；只有模型家族也不明時，才依已確認的 Claude Code 或 Codex 工具選用入口。模型名稱不代表工具一定會讀取本機文件；若使用中的介面無法存取專案，需提供相應規範與技能檔案內容。選用 Agent 指的是讀取哪份工作指引，不會自行切換模型或開啟另一個服務。[Codex 官方載入方式](https://learn.chatgpt.com/docs/agent-configuration/agents-md)、[Claude Code 官方載入方式](https://code.claude.com/docs/en/memory#agentsmd)
 
-AI 會將每位學生已確認的工具、模型與入口記錄在 [PROJECT.md 的 AI Agent Context](PROJECT.md#ai-agent-context)，同組可使用不同模型。已確認且仍適用的設定會沿用；更換工具或模型時更新該位學生的紀錄，教師修改工作包時不會代填學生設定。
+AI 會將每位學生已確認的工具、模型與入口記錄在 [PROJECT-PROPOSAL.md 的 AI Agent Context](PROJECT-PROPOSAL.md#ai-agent-context)，同組可使用不同模型。已確認且仍適用的設定會沿用；更換工具或模型時更新該位學生的紀錄，教師修改工作包時不會代填學生設定。
 
 ## 使用 Claude Code
 
@@ -102,10 +102,10 @@ claude
 
 ```text
 請讀取 skills/proposal-writer/SKILL.md，依課程規範帶我們分階段討論提案。
-先沿用 PROJECT.md 中已確認的資料，再詢問尚缺少的姓名、分工與初步研究想法。
+先沿用 PROJECT-PROPOSAL.md 中已確認的資料，再詢問尚缺少的姓名、分工與初步研究想法。
 ```
 
-若 Windows 或解壓縮工具未保留符號連結，仍可用上述指定 `skills/<名稱>/SKILL.md` 的方式。`AGENTS.md`、`FINDING-RULES.md`、`PROJECT.md`、`skills/` 與 `templates/` 都需一起保留。Claude Code 仍使用本機可用的 Python、R、Stata 或 LaTeX；程式與外部服務連線依實際任務準備。
+若 Windows 或解壓縮工具未保留符號連結，仍可用上述指定 `skills/<名稱>/SKILL.md` 的方式。`AGENTS.md`、`FINDING-RULES.md`、`PROJECT-PROPOSAL.md`、`skills/` 與 `templates/` 都需一起保留。Claude Code 仍使用本機可用的 Python、R、Stata 或 LaTeX；程式與外部服務連線依實際任務準備。
 
 ## 可以直接說
 
@@ -152,7 +152,7 @@ claude
 ```text
 請用 data-preparation，依範本整理我放在 data/raw/ 的資料。
 使用 R Markdown、繁體中文；請完成原始資料說明、處理程式與整理後資料說明，
-將實際輸出與檢查結果記錄在 PROJECT.md，讓後續分析可以接著使用。
+將實際輸出與檢查結果記錄在 PROJECT-PROPOSAL.md，讓後續分析可以接著使用。
 ```
 
 也可以只指定 `raw-data-documentation`、`data-processing` 或
@@ -163,17 +163,17 @@ claude
 ```text
 請用 maintain-data-documentation，更新 data/raw/ 與 data/processed/ 的既有說明文件。
 沿用各文件的格式，核對本次更新的資料、變數定義、來源、摘要與連結，
-同步 PROJECT.md 的 Data Artifacts，並指出仍使用舊資料版本的文件或 finding。
+同步 PROJECT-PROPOSAL.md 的 Data Artifacts，並指出仍使用舊資料版本的文件或 finding。
 ```
 
 ```text
-請用 maintain-project-context，依本次已確認的討論與實際成果更新 PROJECT.md。
+請用 maintain-project-context，依本次已確認的討論與實際成果更新 PROJECT-PROPOSAL.md。
 維持 Data and Current Focus 表格，並在 Key Contributions 記錄
 誰、做了什麼、對應的 commit 連結或 SHA；未 commit 標示待提交，不能視為完成貢獻紀錄。
 ```
 
 資料文件維護會沿用既有 `.ipynb`／`.Rmd`，依變動範圍核對實際結果；
-單純修改說明不會自動重做資料處理或重跑 finding。只維護 `PROJECT.md`
+單純修改說明不會自動重做資料處理或重跑 finding。只維護 `PROJECT-PROPOSAL.md`
 不必另選 R／Python，也不需要另外填寫週報。
 
 ## 產出會議記錄
@@ -213,7 +213,7 @@ claude
 | 資料清理、合併、轉形與切分 | `data-processing` | `data/code/` 處理 `.ipynb`／`.Rmd`，資料寫入 `data/processed/` |
 | 整理後資料說明、斷言與分析銜接 | `processed-data-documentation` | `data/processed/` 說明 `.ipynb`／`.Rmd`，核對實際檔案 |
 | 維護已有 raw／processed 資料說明 | `maintain-data-documentation` | 更新既有文件、版本與檢查紀錄，同步資料索引 |
-| 維護專案脈絡、目前焦點與貢獻紀錄 | `maintain-project-context` | 更新 `PROJECT.md`，貢獻表列出姓名、成果與 commit reference |
+| 維護專案脈絡、目前焦點與貢獻紀錄 | `maintain-project-context` | 更新 `PROJECT-PROPOSAL.md`，貢獻表列出姓名、成果與 commit reference |
 | 敘述統計、圖表、檢定、迴歸 | `stat-analysis` | `finding/` 統計分析，選定的 `.ipynb` 或 `.Rmd` |
 | 預測與 train/test 模型評估 | `prediction-model` | `finding/` 預測模型，選定的 `.ipynb` 或 `.Rmd` |
 | 數值模擬 | `simulation-runner` | `finding/` 模擬 Notebook／Rmd，沿用原範本 |
@@ -242,7 +242,7 @@ claude
 ├── CLAUDE.md                  Claude Code 入口，匯入共用規範
 ├── .claude/skills/            Claude 技能入口，連結至 skills/ 原檔
 ├── README.md                  學生使用說明
-├── PROJECT.md                 研究問題、學生偏好與資料索引
+├── PROJECT-PROPOSAL.md                 研究問題、學生偏好與資料索引
 ├── FINDING-RULES.md            資料與 finding 的共用操作規則
 ├── skills/                    所有課程與研究 skills
 │   ├── proposal-writer/
@@ -280,7 +280,7 @@ claude
 大量清理放在 `data/code/`；統計與預測 finding 讀取 `data/processed/`。模擬可以自行生成資料。範本中的 `/data/...` 指的是本專案資料夾，並非電腦根目錄。
 
 資料銜接順序是 **原始檔與說明 → 處理 Notebook／Rmd → 已驗證的整理檔與說明 → finding**。
-`PROJECT.md` 的 `Data Artifacts` 連結每份資料的實際路徑、文件、產生程式及角色；AI 檢查磁碟上的檔案後記錄驗證結果與 SHA-256（用來辨識檔案內容版本）。後續分析依這份紀錄核對並讀取精確檔案，程式會在資料消失或版本改變時明確停止，避免誤讀其他檔。更新資料後，AI 會指出哪些既有分析仍使用舊資料；任務包含重分析時才重新產出結果。
+`PROJECT-PROPOSAL.md` 的 `Data Artifacts` 連結每份資料的實際路徑、文件、產生程式及角色；AI 檢查磁碟上的檔案後記錄驗證結果與 SHA-256（用來辨識檔案內容版本）。後續分析依這份紀錄核對並讀取精確檔案，程式會在資料消失或版本改變時明確停止，避免誤讀其他檔。更新資料後，AI 會指出哪些既有分析仍使用舊資料；任務包含重分析時才重新產出結果。
 
 三種資料文件皆沿用相應正式範本，由學生選擇 ipynb 或 Rmd；資料文件沒有另外新增必交 HTML。
 
@@ -312,7 +312,7 @@ claude
 
 當時版本的 21 個 skills 已通過結構驗證，6 份 Notebook 範本通過格式檢查，6 份 Rmd 範本程式區塊通過語法檢查，相關文件連結已核對。2026-09-11 以固定種子 51660911 的隔離人工資料，實測新增的 `data-preparation`、`stat-analysis`、`prediction-model`、`external-file` 與 `proposal-writer`：6 份 Python Notebook 共 43 個程式區塊執行成功，R 統計分析成功產出 Rmd 與同名 HTML；資料整理結果、HC1 迴歸及連續／二元預測指標均與獨立計算一致，分析 HTML 與圖表已檢視。外部紀錄的建立、更新歷史、逐字稿及提案六章節、資料引用也已核對；缺少偏好時先詢問且不產出檔案的情境通過。
 
-新增三個資料技能後，再以種子 51660912 完整實跑 Python 與 R 資料流程：5 份 Jupyter Notebook（26 個程式區塊）及 3 份 Rmd 成功執行，存檔內容與獨立計算一致，原始資料保持不變。新的分析對話只從 `PROJECT.md` 接手，正確找到 87 筆統計資料及 93／31 筆 train/test，並產出 Rmd／ipynb 與同名 HTML；迴歸及預測指標與獨立計算一致。整個專案搬到含空格的新路徑後可重跑，資料缺失或內容版本改變時會停止，沒有誤用旁邊的不相關 CSV。測試中發現的資料欄名文字、processed Summary 標題及預測範本註解換行已修正。
+新增三個資料技能後，再以種子 51660912 完整實跑 Python 與 R 資料流程：5 份 Jupyter Notebook（26 個程式區塊）及 3 份 Rmd 成功執行，存檔內容與獨立計算一致，原始資料保持不變。新的分析對話只從 `PROJECT-PROPOSAL.md` 接手，正確找到 87 筆統計資料及 93／31 筆 train/test，並產出 Rmd／ipynb 與同名 HTML；迴歸及預測指標與獨立計算一致。整個專案搬到含空格的新路徑後可重跑，資料缺失或內容版本改變時會停止，沒有誤用旁邊的不相關 CSV。測試中發現的資料欄名文字、processed Summary 標題及預測範本註解換行已修正。
 
 上述歷史測試依教師指示排除 Stata，當時原有 skills（含 `simulation-runner`）未重測。測試涵蓋上述具體案例，不代表所有資料、模型與環境均已驗證。當時測試資料與成果另存於工作包外，未放進學生工作目錄。
 

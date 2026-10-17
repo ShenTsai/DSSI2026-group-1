@@ -29,7 +29,7 @@ required analysis deliverables.
 Read the [shared course rules](../../FINDING-RULES.md) first.
 Then inspect only the files needed for the task:
 
-- the student's request and explicit preferences in `PROJECT.md`
+- the student's request and explicit preferences in `PROJECT-PROPOSAL.md`
 - an existing local index for the same external file
 - the URL, metadata, document content, or presentation material the student supplied
 - related local notes only when they explain the artifact's purpose
@@ -65,7 +65,7 @@ The order of description and link differs between templates; follow the actual f
 The report template also requests a full transcript for presentations.
 
 For narrative text, follow the student's explicit report-language choice in chat
-or `PROJECT.md`; otherwise use the teacher default: Traditional Chinese as used
+or `PROJECT-PROPOSAL.md`; otherwise use the teacher default: Traditional Chinese as used
 in Taiwan (`zh-TW`), with Taiwan-local terminology and phrasing. Do not ask for a
 language choice or delay work when none is specified. If recorded, label this as
 a teacher default, not an explicit student answer. Retain the template's original

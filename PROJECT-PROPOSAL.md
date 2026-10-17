@@ -266,3 +266,70 @@ $$\min_{x}\ \sum_i \big[w_R F_i(x_i) + w_D G_i(x_i)\big] \quad \text{s.t.}\quad 
 * **Project Manager (PM)**：柯典辰
 * **Data Engineer (DE)**：蔡睿燊、李芸榛
 * **Data Analyst (DA)**：馮芳英、柯典辰、蔡睿燊
+
+### Team
+
+| Name | Student ID | GitHub Account | Role |
+| --- | --- | --- | --- |
+| 柯典辰 | B13303082 | peterko2005 | PM, DA |
+| 蔡睿燊 | B13303057 | ShenTsai | DE, DA |
+| 李芸榛 | B13703038 | JenniferjjLee | DE |
+| 馮芳英 | B13303096 | phuonganhphung3007 | DA |
+
+---
+
+# 附錄：專案紀錄（Project Context）
+
+本附錄取代原 `PROJECT.md`，保存 repo 設定、學生偏好、AI 工具紀錄、資料索引與貢獻紀錄。研究問題見 1.1 節，組員與分工見第 6 節 `Team`。未填項目不代表已確認。
+
+## Repository Context
+
+| Field | Details |
+| --- | --- |
+| Remote repository | https://github.com/ShenTsai/DSSI2026-group-1 |
+| Target branch | main |
+| Setup status | 已設定並同步 |
+| Last push verification | 待核對 |
+
+## Student Preferences
+
+- Tool / artifact format: 待詢問學生（Python／Jupyter、R／R Markdown；明確選用 Stata 時依專用格式）
+- Report language: 繁體中文（台灣用語，zh-TW；教師預設，學生明確指定其他語言時優先沿用）
+- Other explicit preferences: 尚未提供
+
+## AI Agent Context
+
+每位已確認學生一列；`Model` 只記學生提供或執行環境可靠顯示的名稱，未知時註明「完整型號未確認」。
+
+| Student | AI tool / client | Model | Agent entrypoint | Source |
+| --- | --- | --- | --- | --- |
+
+## Data and Current Focus
+
+| Field | Details |
+| --- | --- |
+| Data sources / documentation | 待填 |
+| Unit of observation | 待填 |
+| Current task / target variables | 待填 |
+| Assignment constraints | 待填 |
+
+## Data Artifacts
+
+一個實際資料檔一列，依 [資料銜接規則](FINDING-RULES.md#資料銜接與檔案驗證) 填寫。
+
+| Dataset | Role | Data file | Documentation | Processing notebook | Verification | SHA-256 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 局屬氣象站天氣觀測（TDX，2024-07-01） | raw | [data/raw/局屬氣象站-天氣觀測報告資料2024-07-01.CSV](data/raw/局屬氣象站-天氣觀測報告資料2024-07-01.CSV) | [data/raw/weather_codebook.md](data/raw/weather_codebook.md) | not applicable (source) | 2026-10-14 readr 讀取：22,368 列 × 35 欄、233 站，欄位與 OAS 一致；`-99` 缺值代碼未處理 | `2786693db94e07c59a1d7e3c76bd73d626b5364e7ee3e8cb56d1b3642e9de3b3` |
+| 臺北市 YouBike 站點剩餘數量（TDX，2026-10-01） | raw | [data/raw/臺北市公共自行車站點剩餘數量歷史資料2026-10-01.xlsx](data/raw/臺北市公共自行車站點剩餘數量歷史資料2026-10-01.xlsx) | [data/raw/youbike_codebook.md](data/raw/youbike_codebook.md) | not applicable (source) | 2026-10-14 readxl 讀取：1,048,575 列 × 10 欄、768 站，欄位與 OAS 一致；疑似因 Excel 列數上限截斷，尚不可直接分析 | `4f5de9bb380d515a07abd702893bef5df447219e2a2cef4094c61e6d397374e2` |
+| 研究範圍內 YouBike 站點清單（2024） | 站點篩選清單（供處理使用） | [data/processed/stations_in_field.csv](data/processed/stations_in_field.csv) | pending（processed-data 文件待建立） | [data/code/filter_stations_in_field.R](data/code/filter_stations_in_field.R) | 2026-10-17 讀取：81 列 × 9 欄、78 個 `StationUID`（3 站年中移位）；與腳本目前多邊形重算結果一致 | `e82732d9384b5bb8e0d1be02fe151331d78258fedbba7cc1418af35bd69309f7` |
+| 研究範圍內 YouBike 站點剩餘數量（TDX，2024 全年） | analysis | [data/processed/youbike_rental_in_field_2024.parquet](data/processed/youbike_rental_in_field_2024.parquet) | pending（processed-data 文件待建立） | [data/code/youbike_rental_in_field.Rmd](data/code/youbike_rental_in_field.Rmd) | 2026-10-17 乾淨 R 程序 knit 執行並讀回：7,225,134 列 × 11 欄、78 站、356 天（10 天原始檔為空）；366 個原始檔依 [manifest](data/code/youbike_rental_raw_manifest.csv) 核對 SHA-256；無缺值、站點 × 時間無重複；`ServiceStatus` 有 19,962 列未定義代碼 `2` 未重新編碼 | `6d631d33567f9e7d662d8d605798c5b0890397a674d69b7081d6a4c91e618db1` |
+
+路徑與連結相對於本專案根目錄。Role 記錄 raw／analysis／train／test 或已確認用途；Verification 說明實際執行的檢查、日期與限制，未完成時明列 pending／failed。SHA-256 由實際檔案計算。外部整理檔沒有產生程式可記 not available；原始來源可記 not applicable (source)。
+
+## Key Contributions
+
+每項貢獻一列，須附實際包含該成果的 commit 連結或 SHA。未 commit 標「待提交」，未核對標「待核對」；已 commit 但未核對遠端標「推送待核對」。
+
+| Name | Contribution | Commit reference |
+| --- | --- | --- |
+| 待填 | 待填 | 待填 |

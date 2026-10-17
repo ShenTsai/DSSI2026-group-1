@@ -11,7 +11,7 @@ processing code, saved outputs, and their intended analysis roles.
 
 ## What to inspect
 
-- the request, confirmed preferences, and relevant `Data Artifacts` in `PROJECT.md`;
+- the request, confirmed preferences, and relevant `Data Artifacts` in `PROJECT-PROPOSAL.md`;
 - [shared rules](../../FINDING-RULES.md), including data handoff and verification;
 - relevant raw-data documents, source files, and existing processing code;
 - existing downstream documents only when needed to preserve their input contract;
@@ -29,7 +29,7 @@ The selected notebook is the document for direct review. Export HTML only when
 separately and explicitly requested; its absence is not incomplete.
 
 For narrative text, follow the student's explicit report-language choice in chat
-or `PROJECT.md`; otherwise use the teacher default: Traditional Chinese as used
+or `PROJECT-PROPOSAL.md`; otherwise use the teacher default: Traditional Chinese as used
 in Taiwan (`zh-TW`), with Taiwan-local terminology and phrasing. Do not ask for a
 language choice or delay work when none is specified. If recorded, label this as
 a teacher default, not an explicit student answer. Retain the template's original

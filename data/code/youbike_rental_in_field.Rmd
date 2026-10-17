@@ -1,0 +1,350 @@
+---
+title: "youbike_rental_in_field"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = FALSE)
+# Global options for knitr go here if needed
+## knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# README
+
+- **Author**: `待確認`
+- **Created At**: `2026-10-17`
+- **Last Modified At**: `2026-10-17`
+
+---
+
+## What does this file do?
+
+- 從 2024 年臺北市 YouBike 站點剩餘數量歷史資料（每日一檔，共 366 檔）中，只保留位於研究範圍（臺大／公館一帶多邊形）內的站點紀錄。研究範圍站點清單來自 `data/processed/stations_in_field.csv`（由 `data/code/filter_stations_in_field.R` 產生，78 個 `StationUID`）。
+- 觀察單位不變：站點 × 來源更新時間（`StationUID` × `SrcUpdateTime`），每筆為一次站點狀態更新。本檔只做篩選與型別轉換，不做時間彙總、不補值、不重新編碼 `ServiceStatus`。
+- 型別轉換：車數欄位轉為整數；`SrcUpdateTime`、`UpdateTime` 由含 `+08:00` 的 ISO 8601 字串轉為 `Asia/Taipei` 時區的時間；`StationUID`、`StationID`、`ServiceStatus`、`ServiceType` 保留原始文字。新增 `source_date`，記錄該列來自哪一天的原始檔。
+- 空檔處理：0 bytes 的原始檔不讀取；只有標題列的檔案讀入後為 0 列。兩者都在下方逐檔紀錄中列出，不視為錯誤，也不補資料。
+- 不涉及合併、train/test 切分或任何需擬合的前處理。
+
+---
+
+## What does this file take?
+
+- **Source Data Sets** (one entry per actual file):
+  1. `data/processed/stations_in_field.csv`
+     - Input key: `stations_in_field`
+     - Description: 研究範圍內的站點位置，一列為一個 `StationUID` × 位置（3 站年中移位，故 81 列、78 站）；本檔只使用 `StationUID`。
+     - Documentation: `data/code/filter_stations_in_field.R`（processed-data 文件待建立）
+     - SHA-256: `e82732d9384b5bb8e0d1be02fe151331d78258fedbba7cc1418af35bd69309f7`
+  2. `data/code/youbike_rental_raw_manifest.csv`
+     - Input key: `rental_manifest`
+     - Description: 366 個原始檔的精確路徑、位元組數與 SHA-256，一檔一列。原始檔數量多，以此清單逐檔綁定，而不是用 glob 選檔。
+     - Documentation: 本檔
+     - SHA-256: `見下方 EXPECTED_INPUT_SHA256`
+  3. `data/raw/youbike_rental_raw/臺北市公共自行車站點剩餘數量歷史資料2024-MM-DD.CSV`（2024-01-01 至 2024-12-31，共 366 檔，逐檔列於 manifest）
+     - Input key: `rental_raw`
+     - Description: TDX 站點即時車位歷史紀錄，10 欄（`StationUID`, `StationID`, `ServiceStatus`, `ServiceType`, `AvailableRentBikes`, `AvailableReturnBikes`, `SrcUpdateTime`, `UpdateTime`, `GeneralBikes`, `ElectricBikes`）。
+     - Documentation: `data/raw/youbike_rental_codebook.md`
+     - SHA-256: 逐檔記錄於 `data/code/youbike_rental_raw_manifest.csv`，執行時逐檔核對
+
+---
+
+## What does this file output?
+
+- `data/processed/youbike_rental_in_field_2024.parquet`
+  - Output key: `rental_in_field`
+  - Description: 研究範圍內 78 站的 2024 年站點狀態更新紀錄，原始 10 欄加上 `source_date`。
+  - Role: `analysis`
+  - Documentation: `data/processed/<OUTPUT_DOCUMENTATION.Rmd>`（待建立）
+  - Expected schema and row-count rules: 11 欄；`StationUID` 全部屬於站點清單；(`StationUID`, `SrcUpdateTime`) 不重複；無缺值；`SrcUpdateTime` 的日期等於 `source_date`；列數等於各原始檔篩選後列數之和。
+  - Verification status / SHA-256: 見最後一個 chunk 的實際輸出與下方「執行結果」。
+  - Downstream finding input: `data/processed/youbike_rental_in_field_2024.parquet` (same exact file)
+
+### 為什麼存成單一 Parquet 檔
+
+- 篩選後約 720 萬列。存成 CSV 約 850 MB，超過 GitHub 單檔 100 MB 上限，讀取也慢；每日一檔則有 366 個檔案，`Data Artifacts` 需逐檔登記，下游還要再合併。
+- Parquet 是壓縮的欄式格式：保留整數與含時區的時間型別（不必每次重新解析時間字串），以 zstd 壓縮後約 45 MB，可提交到 GitHub，讓組員不必各自下載 12 GB 原始檔。
+- 讀寫使用 `arrow` 套件。這不是 tidyverse 的一部分，但用法很單純：`arrow::read_parquet(path)` 回傳一般的 tibble，之後照常使用 dplyr。
+
+All paths are relative to the project root, not the operating-system root.
+
+```{r}
+library(tidyverse)
+library(arrow)
+
+find_project_root <- function(start = getwd()) {
+  candidate <- normalizePath(start, winslash = "/", mustWork = TRUE)
+  repeat {
+    if (file.exists(file.path(candidate, "AGENTS.md")) &&
+        dir.exists(file.path(candidate, "templates"))) return(candidate)
+    parent <- dirname(candidate)
+    if (identical(parent, candidate)) stop("Open this notebook within the student project containing AGENTS.md and templates/.")
+    candidate <- parent
+  }
+}
+PROJECT_ROOT <- find_project_root()
+
+project_file <- function(relative_path, area, must_exist = TRUE) {
+  # Exact project-relative paths only; no first-file search or OS-root /data path.
+  parts <- strsplit(relative_path, "/", fixed = TRUE)[[1]]
+  if (grepl("^(/|~|[A-Za-z]:)", relative_path) || ".." %in% parts ||
+      grepl("<", relative_path, fixed = TRUE) ||
+      !startsWith(relative_path, paste0("data/", area, "/"))) {
+    stop("Replace the placeholder with an exact path inside data/", area, "/: ", relative_path)
+  }
+  path <- file.path(PROJECT_ROOT, relative_path)
+  if (must_exist && (!file.exists(path) || dir.exists(path))) stop("Input file not found: ", path)
+  # Resolve existing ancestors to reject a path that leaves the project via a symlink.
+  ancestor <- path
+  while (!file.exists(ancestor)) ancestor <- dirname(ancestor)
+  resolved <- normalizePath(ancestor, winslash = "/", mustWork = TRUE)
+  allowed <- normalizePath(file.path(PROJECT_ROOT, "data", area), winslash = "/", mustWork = TRUE)
+  if (!startsWith(allowed, paste0(PROJECT_ROOT, "/"))) {
+    stop("data/", area, "/ resolves outside the project root.")
+  }
+  if (!identical(resolved, allowed) && !startsWith(resolved, paste0(allowed, "/"))) {
+    stop("Resolved path leaves data/", area, "/: ", relative_path)
+  }
+  path
+}
+
+sha256_file <- function(path) {
+  if (!requireNamespace("digest", quietly = TRUE)) {
+    stop("Cannot verify input identity: digest is unavailable. Use an available SHA-256 implementation before loading data.")
+  }
+  digest::digest(file = path, algo = "sha256", serialize = FALSE)
+}
+
+verify_input_sha256 <- function(path, expected) {
+  # Bind this run to the exact file inspected when the notebook was prepared.
+  if (!is.character(expected) || length(expected) != 1L || is.na(expected) ||
+      !grepl("^[0-9a-fA-F]{64}$", expected)) {
+    stop("Fill the expected SHA-256 from the inspected input before loading data.")
+  }
+  actual <- sha256_file(path)
+  if (!identical(actual, tolower(expected))) stop("Input changed: identify the new version before loading ", basename(path), ".")
+  actual
+}
+```
+
+## 綁定輸入檔
+
+站點清單與 manifest 以固定 SHA-256 綁定；manifest 再逐檔綁定 366 個原始檔。
+
+```{r}
+INPUTS <- c(
+  stations_in_field = "data/processed/stations_in_field.csv",
+  rental_manifest = "data/code/youbike_rental_raw_manifest.csv"
+)
+EXPECTED_INPUT_SHA256 <- c(
+  stations_in_field = "e82732d9384b5bb8e0d1be02fe151331d78258fedbba7cc1418af35bd69309f7",
+  rental_manifest = "1b02e3f7d1afb7c488daf5c7049761d6e5c4aaf15dc64bc7736c4966eec5ea46"
+)
+OUTPUTS <- c(rental_in_field = "data/processed/youbike_rental_in_field_2024.parquet")
+
+input_paths <- c(
+  stations_in_field = project_file(INPUTS[["stations_in_field"]], "processed"),
+  rental_manifest = project_file(INPUTS[["rental_manifest"]], "code")
+)
+output_paths <- vapply(OUTPUTS, project_file, character(1), area = "processed", must_exist = FALSE)
+stopifnot(!any(output_paths %in% input_paths))
+if (any(file.exists(output_paths))) stop("Review existing outputs before replacing them.")
+
+input_fingerprints <- map_chr(names(input_paths), \(key) {
+  verify_input_sha256(input_paths[[key]], EXPECTED_INPUT_SHA256[[key]])
+}) |>
+  set_names(names(input_paths))
+
+stations_in_field <- read_csv(
+  input_paths[["stations_in_field"]],
+  col_types = cols(.default = col_character())
+)
+stopifnot(nrow(problems(stations_in_field)) == 0L)
+field_station_ids <- unique(stations_in_field$StationUID)
+
+rental_manifest <- read_csv(
+  input_paths[["rental_manifest"]],
+  col_types = cols(file_path = "c", size_bytes = "d", sha256 = "c")
+)
+stopifnot(
+  nrow(problems(rental_manifest)) == 0L,
+  !anyDuplicated(rental_manifest$file_path),
+  all(grepl("^[0-9a-f]{64}$", rental_manifest$sha256))
+)
+
+glimpse(stations_in_field)
+cat("Field stations:", length(field_station_ids), "\n")
+cat("Raw rental files in manifest:", nrow(rental_manifest), "\n")
+```
+
+```{r}
+# Verify every raw file against the manifest before loading any of them.
+rental_manifest <- rental_manifest |>
+  mutate(
+    abs_path = map_chr(file_path, project_file, area = "raw"),
+    source_date = as.Date(str_extract(file_path, "\\d{4}-\\d{2}-\\d{2}")),
+    actual_sha256 = map_chr(abs_path, sha256_file)
+  )
+
+changed_files <- rental_manifest |>
+  filter(actual_sha256 != sha256)
+if (nrow(changed_files) > 0) {
+  stop("Raw files changed since the manifest was built: ", paste(basename(changed_files$file_path), collapse = ", "))
+}
+stopifnot(
+  !anyNA(rental_manifest$source_date),
+  !anyDuplicated(rental_manifest$source_date)
+)
+cat("All", nrow(rental_manifest), "raw files match their manifest SHA-256.\n")
+cat("Date range:", format(range(rental_manifest$source_date)), "\n")
+```
+
+## 篩選研究範圍站點
+
+逐檔以文字讀入（避免 `StationID` 等欄位被誤判型別），只保留 `StationUID` 屬於站點清單的列，並記錄每檔原始列數與保留列數。
+
+```{r}
+RAW_COLUMNS <- c(
+  "StationUID", "StationID", "ServiceStatus", "ServiceType",
+  "AvailableRentBikes", "AvailableReturnBikes", "SrcUpdateTime", "UpdateTime",
+  "GeneralBikes", "ElectricBikes"
+)
+
+filter_rental_file <- function(abs_path, source_date) {
+  if (file.size(abs_path) == 0) {
+    return(list(data = NULL, raw_rows = 0L, status = "empty file (0 bytes)"))
+  }
+  raw_day <- read_csv(abs_path, col_types = cols(.default = col_character()), progress = FALSE)
+  stopifnot(nrow(problems(raw_day)) == 0L, identical(names(raw_day), RAW_COLUMNS))
+  kept <- raw_day |>
+    filter(StationUID %in% field_station_ids) |>
+    mutate(source_date = source_date)
+  list(
+    data = kept,
+    raw_rows = nrow(raw_day),
+    status = if (nrow(raw_day) == 0) "header only" else "read"
+  )
+}
+
+filter_results <- map2(rental_manifest$abs_path, rental_manifest$source_date, filter_rental_file)
+
+file_log <- rental_manifest |>
+  select(source_date, file_path, size_bytes) |>
+  mutate(
+    status = map_chr(filter_results, "status"),
+    raw_rows = map_int(filter_results, "raw_rows"),
+    kept_rows = map_int(filter_results, \(result) if (is.null(result$data)) 0L else nrow(result$data))
+  )
+
+rental_in_field_chr <- filter_results |>
+  map("data") |>
+  compact() |>
+  list_rbind()
+
+file_log |>
+  count(status)
+file_log |>
+  filter(kept_rows == 0) |>
+  select(source_date, status, raw_rows, kept_rows)
+cat("Raw rows:", sum(file_log$raw_rows), "; kept rows:", sum(file_log$kept_rows), "\n")
+```
+
+## 型別轉換與檢查
+
+```{r}
+COUNT_COLUMNS <- c("AvailableRentBikes", "AvailableReturnBikes", "GeneralBikes", "ElectricBikes")
+TIME_PATTERN <- "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+08:00$"
+
+# Check text formats before conversion so no value is silently turned into NA.
+stopifnot(
+  all(map_lgl(COUNT_COLUMNS, \(column) all(grepl("^[0-9]+$", rental_in_field_chr[[column]])))),
+  all(grepl(TIME_PATTERN, rental_in_field_chr$SrcUpdateTime)),
+  all(grepl(TIME_PATTERN, rental_in_field_chr$UpdateTime))
+)
+
+rental_in_field <- rental_in_field_chr |>
+  mutate(
+    across(all_of(COUNT_COLUMNS), as.integer),
+    across(c(SrcUpdateTime, UpdateTime), \(timestamp) ymd_hms(timestamp, tz = "Asia/Taipei", quiet = TRUE))
+  ) |>
+  # Date-then-station order keeps each day's rows together and compresses best.
+  arrange(source_date, StationUID, SrcUpdateTime)
+
+stopifnot(
+  nrow(rental_in_field) == sum(file_log$kept_rows),
+  all(rental_in_field$StationUID %in% field_station_ids),
+  !anyNA(rental_in_field),
+  !anyDuplicated(select(rental_in_field, StationUID, SrcUpdateTime)),
+  all(as.Date(rental_in_field$SrcUpdateTime, tz = "Asia/Taipei") == rental_in_field$source_date)
+)
+
+glimpse(rental_in_field)
+summary(rental_in_field)
+cat("Stations present:", n_distinct(rental_in_field$StationUID), "of", length(field_station_ids), "\n")
+cat("Days with rows:", n_distinct(rental_in_field$source_date), "\n")
+```
+
+```{r}
+# Values to note for downstream analysis; reported, not recoded.
+rental_in_field |>
+  count(ServiceStatus, ServiceType)
+
+rental_in_field |>
+  mutate(month = format(source_date, "%Y-%m")) |>
+  count(month, name = "rows")
+
+file_log |>
+  filter(kept_rows > 0) |>
+  summarise(
+    min_rows_per_day = min(kept_rows),
+    median_rows_per_day = median(kept_rows),
+    max_rows_per_day = max(kept_rows)
+  )
+```
+
+## 寫出與讀回驗證
+
+```{r}
+outputs <- list(rental_in_field = rental_in_field)
+stopifnot(setequal(names(outputs), names(OUTPUTS)))
+
+verification <- list()
+for (key in names(outputs)) {
+  path <- output_paths[[key]]
+  if (file.exists(path)) stop("Output already exists; review it before replacing: ", path)
+  frame <- outputs[[key]]
+  write_parquet(frame, path, compression = "zstd")
+  reread <- read_parquet(path)
+  stopifnot(
+    identical(names(reread), names(frame)),
+    nrow(reread) == nrow(frame),
+    identical(attr(reread$SrcUpdateTime, "tzone"), "Asia/Taipei"),
+    isTRUE(all.equal(as.data.frame(frame), as.data.frame(reread), check.attributes = FALSE))
+  )
+  verification[[key]] <- list(
+    data_path = OUTPUTS[[key]],
+    rows = nrow(reread),
+    size_mb = round(file.size(path) / 1e6, 1),
+    schema = map_chr(reread, \(column) paste(class(column), collapse = "/")),
+    sha256 = sha256_file(path),
+    status = "read-back checks passed"
+  )
+  print(verification[[key]])
+}
+
+# Inputs must be unchanged after processing.
+for (key in names(input_paths)) {
+  stopifnot(identical(sha256_file(input_paths[[key]]), input_fingerprints[[key]]))
+}
+```
+
+## 執行結果
+
+2026-10-17 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）完整執行，約 2 分鐘。以下為該次實際輸出：
+
+- 輸入核對：站點清單 78 站（81 列）；366 個原始檔全部與 manifest 的 SHA-256 一致。
+- 空檔：6 檔為 0 bytes（2024-10-31、11-02、11-07、11-08、11-09、11-10），4 檔只有 1–2 列且都不屬於研究範圍（11-01、11-03、11-11、12-10）。共 356 天有資料、10 天沒有，**這 10 天在輸出中完全缺漏**，下游若做日別或時間序列分析需留意。
+- 篩選：原始 111,802,383 列 → 保留 7,225,134 列；78 站全部出現。
+- 檢查全部通過：無缺值、(`StationUID`, `SrcUpdateTime`) 無重複、時間日期與檔名日期一致、車數皆為非負整數。
+- 每日列數差異大：中位數 18,670 列／天，但 2024-01-01 至 01-13 約 100,000 列／天（約為平常的 5 倍），1 月共 1,411,029 列。來源似乎在 1 月上旬改變了更新頻率，以列數加總或平均時須先統一時間間隔。
+- **`ServiceStatus` 有未定義代碼**：7,205,172 列為「正常營運」，19,962 列為 `2`。OAS 規格只定義 0（停止營運）與 1（正常營運），`2` 的意義待確認；本檔保留原值不重新編碼。`ServiceType` 全為 `YouBike2`。
+- 輸出：`data/processed/youbike_rental_in_field_2024.parquet`，7,225,134 列 × 11 欄，44.2 MB（zstd），讀回後欄名、列數、時區與數值皆與寫出前一致。
+- SHA-256：`6d631d33567f9e7d662d8d605798c5b0890397a674d69b7081d6a4c91e618db1`

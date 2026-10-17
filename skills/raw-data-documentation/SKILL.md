@@ -18,7 +18,7 @@ maintenance does not require a new template or notebook execution.
 
 Read only the context needed for the current dataset:
 
-- the request, explicit preferences, and relevant `Data Artifacts` in `PROJECT.md`;
+- the request, explicit preferences, and relevant `Data Artifacts` in `PROJECT-PROPOSAL.md`;
 - [shared rules](../../FINDING-RULES.md), especially preferences and data handoff;
 - the original file, source notes, codebook, and any existing raw-data document;
 - the selected [Jupyter template](../../templates/data/raw/template-doc-and-summary-stats.ipynb)
@@ -28,12 +28,12 @@ Read only the context needed for the current dataset:
 
 Create or update a `.ipynb` or `.Rmd` alongside its source in `data/raw/`, using
 a distinct descriptive basename such as `survey_documentation`. Preserve an
-existing document name. Record the source and document in `PROJECT.md` →
+existing document name. Record the source and document in `PROJECT-PROPOSAL.md` →
 `Data Artifacts`. The selected notebook is the document for direct review. Export
 HTML only when separately and explicitly requested; its absence is not incomplete.
 
 For narrative text, follow the student's explicit report-language choice in chat
-or `PROJECT.md`; otherwise use the teacher default: Traditional Chinese as used
+or `PROJECT-PROPOSAL.md`; otherwise use the teacher default: Traditional Chinese as used
 in Taiwan (`zh-TW`), with Taiwan-local terminology and phrasing. Do not ask for a
 language choice or delay work when none is specified. If recorded, label this as
 a teacher default, not an explicit student answer. Retain the template's original
@@ -88,7 +88,7 @@ Follow [the shared discussion rule](../../FINDING-RULES.md#不確定的資訊先
 - A verified raw-file identity means the documented bytes were inspected; it does
   not mean the data are ready for analysis. Keep known issues visible.
 - Use relative links valid from the document's location, including filenames with
-  spaces. In `PROJECT.md`, links are relative to the project root.
+  spaces. In `PROJECT-PROPOSAL.md`, links are relative to the project root.
 - Missing dependencies or unreadable inputs must remain explicit. Do not fabricate
   samples, summary results, hashes, or execution success.
 

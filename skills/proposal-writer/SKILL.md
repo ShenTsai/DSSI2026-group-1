@@ -14,7 +14,7 @@ shape, rather than only asking for a topic before writing the entire proposal.
 
 Read only what the current task needs:
 
-- the student's request, notes, and explicit preferences in `PROJECT.md`;
+- the student's request, notes, and explicit preferences in `PROJECT-PROPOSAL.md`;
 - the [proposal template](../../templates/report/econ-5516-proposal-template.md),
   including its section order and relevant example images;
 - an existing proposal in `report/` when revising it;
@@ -47,7 +47,7 @@ the proposal structure. A request for an outline or a particular section should
 receive that scoped result rather than an unsolicited full proposal.
 
 For narrative text, follow the student's explicit report-language choice in chat
-or `PROJECT.md`; otherwise use the teacher default: Traditional Chinese as used
+or `PROJECT-PROPOSAL.md`; otherwise use the teacher default: Traditional Chinese as used
 in Taiwan (`zh-TW`), with Taiwan-local terminology and phrasing. Do not ask for a
 language choice or delay work when none is specified. If recorded, label this as
 a teacher default, not an explicit student answer. Retain the template's original
@@ -81,7 +81,7 @@ from the student's confirmed decisions.
    Bundle this with the initial-idea question when both are missing. Do not infer
    identities or duties from accounts, commits, supplied files, or template names.
    Leaving pending fields does not replace asking. Record confirmed names and
-   work in `PROJECT.md` → `Team`; preserve established authorship on existing work.
+   work in `PROJECT-PROPOSAL.md` → `Team`; preserve established authorship on existing work.
    Unanswered fields can remain pending in an authorized draft while independent
    work continues; group size does not assign PM/DE/DA or establish responsibilities.
    Teacher template maintenance or format-only checks keep placeholders without
@@ -91,7 +91,7 @@ from the student's confirmed decisions.
    and the choice remains unclear. Do not ask for R or Python merely to write a
    proposal. While awaiting research-input answers, continue work that does not
    depend on them; do not decide the unresolved parts for the student. Record explicit language answers in the
-   `Student Preferences` section of `PROJECT.md` without replacing an existing
+   `Student Preferences` section of `PROJECT-PROPOSAL.md` without replacing an existing
    analysis-tool preference; do not record the teacher default as a student answer.
 2. Establish the student's starting idea and identify the next unresolved choice.
    Reuse their notes and previously confirmed reasoning. Use the discussion guide
@@ -105,7 +105,7 @@ from the student's confirmed decisions.
    Keep available evidence, AI suggestions, and confirmed decisions distinct.
 4. Draft the paragraph or section supported by this discussion. Preserve the
    student's meaning and leave unresolved design choices pending. Keep a concise
-   note in `PROJECT.md` about confirmed choices, the current discussion stage,
+   note in `PROJECT-PROPOSAL.md` about confirmed choices, the current discussion stage,
    and the next unresolved question when these change; a wording-only edit does
    not require a new discussion note. When the needed design and evidence are
    established, assemble the six sections below. Substantial supplied notes can

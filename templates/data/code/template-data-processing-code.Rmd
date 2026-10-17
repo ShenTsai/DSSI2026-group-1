@@ -50,7 +50,7 @@ knitr::opts_chunk$set(error = FALSE)
 
 All paths are relative to the project root, not the operating-system root.
 Replace placeholders and reader/writer options before running. Keep this list,
-the code below, each processed-data document, and `PROJECT.md` Data Artifacts
+the code below, each processed-data document, and `PROJECT-PROPOSAL.md` Data Artifacts
 consistent. Do not mark planned outputs verified. The scaffold uses CSV; adapt
 both writing and read-back code together for another actual format. Bind every
 input to its inspected SHA-256 before data loading; do not silently accept a

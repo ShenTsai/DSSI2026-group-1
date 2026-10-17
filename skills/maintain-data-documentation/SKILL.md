@@ -1,6 +1,6 @@
 ---
 name: maintain-data-documentation
-description: Maintain existing raw and processed data documentation when source notes, file versions, schemas, links, summaries, or processing lineage change. Update the associated PROJECT.md Data Artifacts records while preserving data and distinguishing text edits from computations that need refreshing.
+description: Maintain existing raw and processed data documentation when source notes, file versions, schemas, links, summaries, or processing lineage change. Update the associated PROJECT-PROPOSAL.md Data Artifacts records while preserving data and distinguishing text edits from computations that need refreshing.
 ---
 
 # Maintain Data Documentation
@@ -12,7 +12,7 @@ new cleaning, merging, splitting, or analysis uses its matching skill when reque
 ## Read the relevant evidence
 
 Read [shared data-handoff rules](../../FINDING-RULES.md#資料銜接與檔案驗證), the
-request, confirmed preferences and affected `Data Artifacts` rows in `PROJECT.md`,
+request, confirmed preferences and affected `Data Artifacts` rows in `PROJECT-PROPOSAL.md`,
 then the affected raw/processed document and exact data files. Consult codebooks,
 source notes, and producing notebooks only as needed to establish what changed.
 Do not choose a version from modification time, glob order, or a similar filename.
@@ -87,7 +87,7 @@ missing upstream code just to fill a provenance field.
 
 ## Synchronize the current data index
 
-Update the affected `PROJECT.md` → `Data Artifacts` rows in place using the shared
+Update the affected `PROJECT-PROPOSAL.md` → `Data Artifacts` rows in place using the shared
 columns: `Dataset | Role | Data file | Documentation | Processing notebook |
 Verification | SHA-256`.
 
@@ -105,7 +105,7 @@ Verification | SHA-256`.
   its unavailability explicit and resolve the intended replacement before presenting
   it as a current usable input. Retain relevant prior lineage in the document.
 - Verify links from the document's directory and from the project root for
-  `PROJECT.md`; retain portable exact paths, including filenames with spaces.
+  `PROJECT-PROPOSAL.md`; retain portable exact paths, including filenames with spaces.
 
 Updating these data rows is part of this skill. Use
 [maintain-project-context](../maintain-project-context/SKILL.md) when the request
@@ -124,7 +124,7 @@ older data. Do not create a separate report merely to record routine maintenance
 
 Data documentation and index updates are contributions and need a supporting commit
 for the contribution record to be complete. Record the current maintenance work in
-`PROJECT.md` → `Key Contributions`, reusing a matching pending row or adding one
+`PROJECT-PROPOSAL.md` → `Key Contributions`, reusing a matching pending row or adding one
 with the changed document links. Use the confirmed contributor name and work;
 if still unanswered after asking, write `待確認` rather than assigning a student.
 Uncommitted work uses

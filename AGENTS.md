@@ -41,7 +41,7 @@ not change the running model, launch another service, or grant new tools.
   explicitly read the selected files if file access is available. Otherwise
   request the relevant file contents and do not claim that local rules loaded.
 - Once the student's identity is confirmed, maintain that student's row in
-  `PROJECT.md` → `AI Agent Context` when recording project context is authorized.
+  `PROJECT-PROPOSAL.md` → `AI Agent Context` when recording project context is authorized.
   Record the actual client, confirmed model (or unknown exact model), selected
   entrypoint, and evidence source. Reuse it only when it still applies to the
   current student/session; one group member's choice is not the whole group's
@@ -115,7 +115,7 @@ below together with the research conventions in this file.
   Missing report language does not require a question or delay. While waiting
   for a required format answer, inspect
   inputs read-only. Do not infer a preference from installed software.
-- Preserve choices explicitly provided in chat or `PROJECT.md`; distinguish the
+- Preserve choices explicitly provided in chat or `PROJECT-PROPOSAL.md`; distinguish the
   teacher's language default from the student's explicit answers in
   `Student Preferences`. Retain original template field names. A request to
   edit a named existing notebook already determines its format.
@@ -139,7 +139,7 @@ below together with the research conventions in this file.
 | Clean, merge, reshape, or split | `data-processing` | `templates/data/code/` → `data/code/` notebook/Rmd; saved outputs in `data/processed/` |
 | Document and verify saved analysis inputs | `processed-data-documentation` | `templates/data/processed/` → `data/processed/` notebook/Rmd |
 | Maintain existing raw/processed data documents | `maintain-data-documentation` | updates affected documents and their `Data Artifacts` rows |
-| Maintain project context and contribution evidence | `maintain-project-context` | scoped updates to `PROJECT.md`, including its tables |
+| Maintain project context and contribution evidence | `maintain-project-context` | scoped updates to `PROJECT-PROPOSAL.md`, including its tables |
 | Descriptive statistics, tests, regression | `stat-analysis` | `template-stat-analysis` → `finding/` |
 | Train/test prediction and model comparison | `prediction-model` | `template-prediction-model` → `finding/` |
 | Numerical simulation | `simulation-runner` | `template-simulation` → `finding/` |
@@ -192,7 +192,7 @@ the AI client; do not use a downloaded ZIP directory as if it were already a rep
   prove a current remote push. Confirm branch membership, not necessarily that an
   older contribution commit equals the current branch tip. Label student-reported
   status as reported when it has not been independently checked.
-- Maintain `PROJECT.md` → `Repository Context` from student-provided or verified
+- Maintain `PROJECT-PROPOSAL.md` → `Repository Context` from student-provided or verified
   facts, preserving unknowns. The teacher's template itself need not be a repo.
 
 ## Course Contribution Records
@@ -202,7 +202,7 @@ code, data work, documentation, proposals, and project-context updates. For exte
 work, students commit a substantive description or index that makes it traceable;
 do not claim that this commits the external artifact itself.
 
-Maintain `PROJECT.md` → `Key Contributions` as `Name | Contribution | Commit reference`,
+Maintain `PROJECT-PROPOSAL.md` → `Key Contributions` as `Name | Contribution | Commit reference`,
 one contribution per row. Require a commit link or SHA whose changes support the
 recorded contribution. File links alone do not satisfy this course requirement.
 Mark uncommitted work `待提交`, and unverified references `待核對`; neither is a
@@ -225,7 +225,7 @@ Use the three `templates/data/` directories for their respective notebook/Rmd
 documents; data work does not newly require paired HTML. Reuse confirmed student
 preferences across stages and valid existing upstream artifacts.
 
-Keep one row per actual data file in `PROJECT.md` → `Data Artifacts`, linking the
+Keep one row per actual data file in `PROJECT-PROPOSAL.md` → `Data Artifacts`, linking the
 exact project-relative data path, its documentation, producing notebook, role,
 checks, and SHA-256. Register only actual inspected files; pending/failed work
 must not appear ready. Validate serialized processing outputs by reopening them.
@@ -301,7 +301,7 @@ use the matching finding skill only when actual analysis is also requested.
   roster or a reason to invent members; use an explicitly supplied actual roster
   even when its size differs. Do not derive PM/DE/DA assignments from group size.
 - At student-workflow intake, reuse confirmed names and responsibilities from the
-  conversation or `PROJECT.md`/`TEAM.md`. If missing, explicitly ask the student's
+  conversation or `PROJECT-PROPOSAL.md`/`TEAM.md`. If missing, explicitly ask the student's
   name and the work they actually handle before attributing work or filling author
   and role fields; leaving a placeholder alone is not a substitute for asking.
   At group-project intake, ask for all members' names and confirmed actual work,
@@ -310,7 +310,7 @@ use the matching finding skill only when actual analysis is also requested.
   Do not infer identity or duties from Git authors, computer accounts, filenames,
   template examples, or who supplied a file. Do not automatically make the current
   student the author of pre-existing work. Record confirmed names and actual work
-  in `PROJECT.md` → `Team`, one row per confirmed member, using `Role` for the
+  in `PROJECT-PROPOSAL.md` → `Team`, one row per confirmed member, using `Role` for the
   supplied role and work description. Placeholder rows do not establish membership.
 - Students decide their role assignments. Keep unanswered names and duties pending;
   do not assign PM/DE/DA, invent responsibilities, or overwrite confirmed authors.
@@ -347,8 +347,11 @@ use the matching finding skill only when actual analysis is also requested.
 
 ## Folder and File Meaning
 
-- `PROJECT.md`: project purpose, preferences, scope, current focus, and the
-  `Data Artifacts` index linking data, documentation, processing, and verification.
+- `PROJECT-PROPOSAL.md`: the group's proposal (sections 1–6) plus the project
+  context appendix (`Repository Context`, `Student Preferences`, `AI Agent Context`,
+  `Data and Current Focus`, `Data Artifacts`, `Key Contributions`). `Team` is the
+  table under section 6. This file replaces the template's `PROJECT.md`; do not
+  recreate `PROJECT.md`.
 - `TEAM.md`: optional team roster, roles, responsibilities, Git identities,
   capacity, and review areas.
 - `ROADMAP.md`: optional priorities, milestones, definitions of done, and
@@ -402,7 +405,7 @@ Build only the context needed for the task.
 
 ### Empirical, data, and software work
 
-1. `PROJECT.md`, `ROADMAP.md`, and the directly relevant source or deliverable;
+1. `PROJECT-PROPOSAL.md`, `ROADMAP.md`, and the directly relevant source or deliverable;
 2. relevant data documentation and code;
 3. directly relevant findings and outputs;
 4. the latest finalized weekly report when coordination context matters;
@@ -412,7 +415,7 @@ Build only the context needed for the task.
 
 1. the upcoming team-written internal weekly report;
 2. the previous finalized weekly report and its `Next Actions`;
-3. `PROJECT.md`, `ROADMAP.md`, and `TEAM.md`;
+3. `PROJECT-PROPOSAL.md`, `ROADMAP.md`, and `TEAM.md`;
 4. new commits and relevant committed diffs since the previous meeting;
 5. evidence linked from the report;
 6. `BACKLOG.md`, `DECISIONS.md`, and `RISKS.md` when relevant.
@@ -428,7 +431,7 @@ Do not read broadly without need.
 - Ask students for missing tool/format preferences before new data or finding
   work. Do not default to R or Python. For report language, use Traditional
   Chinese with Taiwan terminology and phrasing (zh-TW) unless the student has
-  explicitly chosen another language. Reuse preferences in chat or `PROJECT.md`;
+  explicitly chosen another language. Reuse preferences in chat or `PROJECT-PROPOSAL.md`;
   do not wait for a language answer when the default applies.
 - Match notation to the existing LaTeX draft before adding manuscript text.
 - Integrate the current chat into `deliverable/paper/` only when the user
@@ -456,7 +459,7 @@ Use this workflow only for projects with weekly team coordination.
   assignment snapshot. Unfinished work must be carried forward explicitly.
 - `BACKLOG.md`, `DECISIONS.md`, and `RISKS.md` are optional current-state views
   derived only from finalized internal weekly reports.
-- `PROJECT.md`, `TEAM.md`, and `ROADMAP.md` are manager-maintained context.
+- `PROJECT-PROPOSAL.md`, `TEAM.md`, and `ROADMAP.md` are manager-maintained context.
 - Git commits are evidence that changes were recorded, not proof of quality,
   completion, effort, acceptance, or sole authorship.
 

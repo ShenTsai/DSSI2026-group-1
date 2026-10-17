@@ -16,7 +16,7 @@ maintenance does not require a new template or notebook execution.
 
 ## What to inspect
 
-- the request, explicit preferences, and relevant `Data Artifacts` in `PROJECT.md`;
+- the request, explicit preferences, and relevant `Data Artifacts` in `PROJECT-PROPOSAL.md`;
 - [shared rules](../../FINDING-RULES.md), especially data handoff and verification;
 - the exact saved processed file, existing documentation, and its producing code;
 - source documentation only when needed to explain lineage or variable definitions;
@@ -26,7 +26,7 @@ maintenance does not require a new template or notebook execution.
 ## Output targets
 
 Create or update the chosen `.ipynb` or `.Rmd` beside the data in `data/processed/`
-using a distinct documentation basename. Register or update its `PROJECT.md` →
+using a distinct documentation basename. Register or update its `PROJECT-PROPOSAL.md` →
 `Data Artifacts` row. Reuse a suitable existing document, and document multiple
 outputs together only when each has an explicit path, role, and separate checks.
 The selected notebook is the document for direct review. Export HTML only when
@@ -34,7 +34,7 @@ separately and explicitly requested; its absence is not incomplete. This task
 does not itself require a statistical finding.
 
 For narrative text, follow the student's explicit report-language choice in chat
-or `PROJECT.md`; otherwise use the teacher default: Traditional Chinese as used
+or `PROJECT-PROPOSAL.md`; otherwise use the teacher default: Traditional Chinese as used
 in Taiwan (`zh-TW`), with Taiwan-local terminology and phrasing. Do not ask for a
 language choice or delay work when none is specified. If recorded, label this as
 a teacher default, not an explicit student answer. Retain the template's original
@@ -95,7 +95,7 @@ Follow [the shared discussion rule](../../FINDING-RULES.md#不確定的資訊先
 - Documentation and validation must not silently repair data. When correction is
   needed, explain it and use [data-processing](../data-processing/SKILL.md) within
   the student's authorized scope, then validate the newly saved output.
-- Keep links relative to the document location, and `PROJECT.md` links relative to
+- Keep links relative to the document location, and `PROJECT-PROPOSAL.md` links relative to
   the root. Paths with spaces must work in both prose links and executable readers.
 - Record pending/failed execution honestly. Never register a stale output from a
   failed processing attempt as the newly verified result.

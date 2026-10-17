@@ -1,11 +1,11 @@
 ---
 name: maintain-project-context
-description: Maintain PROJECT.md when asked to update project context, confirmed preferences, a student's AI model and agent entrypoint, current data and focus, the Data Artifacts index, or contributions with commit references. Use for scoped project-memory updates; data-documentation skills can still update their own artifact rows directly.
+description: Maintain PROJECT-PROPOSAL.md when asked to update project context, confirmed preferences, a student's AI model and agent entrypoint, current data and focus, the Data Artifacts index, or contributions with commit references. Use for scoped project-memory updates; data-documentation skills can still update their own artifact rows directly.
 ---
 
 # Maintain Project Context
 
-Keep `PROJECT.md` useful for the next task by recording confirmed context and
+Keep `PROJECT-PROPOSAL.md` useful for the next task by recording confirmed context and
 traceable evidence. Edit the relevant sections in place; preserve unrelated
 content and the existing table formats. This is a Markdown maintenance task,
 so it does not require an R/Python choice unless new data documents or analysis
@@ -14,7 +14,7 @@ are also requested.
 ## Read the relevant evidence
 
 - Read the request, [project rules](../../AGENTS.md), and the actual project-root
-  `PROJECT.md`. Use the existing filename rather than creating a duplicate for
+  `PROJECT-PROPOSAL.md`. Use the existing filename rather than creating a duplicate for
   a spelling or capitalization variant in the request.
 - For data rows, read [data handoff rules](../../FINDING-RULES.md#資料銜接與檔案驗證),
   the named files, and their linked documentation and producing code as needed.

@@ -16,7 +16,7 @@ The instructor's supplied text contains no separate simulation delivery section.
 First read [FINDING-RULES.md](../../FINDING-RULES.md), then inspect only the files needed for the task:
 
 - the student's simulation question, DGP, supplied code, or existing results in `finding/`
-- relevant Markdown research notes and project context, including `PROJECT.md` or `ROADMAP.md` when needed
+- relevant Markdown research notes and project context, including `PROJECT-PROPOSAL.md` or `ROADMAP.md` when needed
 - the most relevant theory note or LaTeX draft in `deliverable/paper/`, when the simulation concerns a paper or theoretical claim
 - the selected simulation template when creating or reformatting a notebook
 
@@ -35,7 +35,7 @@ A request to inspect results or discuss a design does not require creating a not
 Use the student's requested or existing filename; otherwise choose a descriptive basename. A meeting date is not required for naming. Record the actual creation date in `Created At` independently of the filename. Do not generate HTML by default; export it only when separately and explicitly requested. Missing HTML is not an incomplete simulation delivery. Keep any explicitly requested export consistent with the source notebook.
 
 For narrative text, follow the student's explicit report-language choice in chat
-or `PROJECT.md`; otherwise use the teacher default: Traditional Chinese as used
+or `PROJECT-PROPOSAL.md`; otherwise use the teacher default: Traditional Chinese as used
 in Taiwan (`zh-TW`), with Taiwan-local terminology and phrasing. Do not ask for a
 language choice or delay work when none is specified. If recorded, label this as
 a teacher default, not an explicit student answer. Retain the template's original

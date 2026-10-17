@@ -27,7 +27,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 - SHA-256: `<pending; fingerprint of this processed file after successful checks>`
 - Downstream analysis input: `data/processed/<OUTPUT_FILE_NAME.csv>` (must equal Data path)
 
-Keep these paths and the `PROJECT.md` Data Artifacts row consistent. The source
+Keep these paths and the `PROJECT-PROPOSAL.md` Data Artifacts row consistent. The source
 and processing links describe lineage; later finding notebooks read this exact
 processed file. For train/test data, document each file and its role separately.
 Replace placeholders and adapt reader options to preserve the intended types.
@@ -147,6 +147,6 @@ if (!identical(actual_sha256, input_fingerprint)) stop("File changed during docu
 print(list(data_path = INPUT_RELATIVE_PATH, rows = nrow(df), columns = names(df),
            sha256 = actual_sha256,
            status = "configured checks passed"))
-# Update Data Description and the PROJECT.md Data Artifacts row only from real
+# Update Data Description and the PROJECT-PROPOSAL.md Data Artifacts row only from real
 # results. Downstream finding code must use this exact path and verified SHA-256.
 ```

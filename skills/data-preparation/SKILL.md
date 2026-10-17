@@ -13,7 +13,7 @@ specialist skill's instructions.
 ## What to inspect
 
 Read [shared rules](../../FINDING-RULES.md), the student's request, confirmed
-preferences and relevant `Data Artifacts` in `PROJECT.md`, then only the data,
+preferences and relevant `Data Artifacts` in `PROJECT-PROPOSAL.md`, then only the data,
 documents, and processing code needed to understand the requested stages.
 
 ## Output targets
@@ -33,7 +33,7 @@ explicitly requested; its absence is not an incomplete delivery. Do not create
 both notebook formats or unrelated reports just because templates exist.
 
 For narrative text, follow the student's explicit report-language choice in chat
-or `PROJECT.md`; otherwise use the teacher default: Traditional Chinese as used
+or `PROJECT-PROPOSAL.md`; otherwise use the teacher default: Traditional Chinese as used
 in Taiwan (`zh-TW`), with Taiwan-local terminology and phrasing. Do not ask for a
 language choice or delay work when none is specified. If recorded, label this as
 a teacher default, not an explicit student answer. Retain the template's original

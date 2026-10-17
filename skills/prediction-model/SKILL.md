@@ -11,7 +11,7 @@ Turn the student's prediction question and prepared data into a reproducible fin
 
 Read only the context needed for the task:
 
-- the request, explicit preferences, and relevant `Data Artifacts` rows in `PROJECT.md`;
+- the request, explicit preferences, and relevant `Data Artifacts` rows in `PROJECT-PROPOSAL.md`;
 - [shared finding rules](../../FINDING-RULES.md);
 - relevant data documentation, split-generation code, existing models, and results;
 - the [Jupyter template](../../templates/finding/template-prediction-model.ipynb) or [R Markdown template](../../templates/finding/template-prediction-model.Rmd), according to the student's preference.
@@ -25,7 +25,7 @@ Create or revise the selected `.ipynb` or `.Rmd` with actual results under `find
 Put substantial data preparation and split-generation code in `data/code/`, and saved training/testing inputs in `data/processed/`. Add predictions or figures only as useful supporting outputs. Follow the shared student Git workflow: students create their repository first and perform stage, commit, and push themselves in VS Code. The AI supplies files and a suggested commit message and checks actual commit evidence read-only afterward; uncommitted work remains `待提交`, and a local commit is distinct from verified GitHub delivery.
 
 For narrative text, follow the student's explicit report-language choice in chat
-or `PROJECT.md`; otherwise use the teacher default: Traditional Chinese as used
+or `PROJECT-PROPOSAL.md`; otherwise use the teacher default: Traditional Chinese as used
 in Taiwan (`zh-TW`), with Taiwan-local terminology and phrasing. Do not ask for a
 language choice or delay work when none is specified. If recorded, label this as
 a teacher default, not an explicit student answer. Retain the template's original
@@ -63,7 +63,7 @@ Replace `<metric>` with actual metric names. Keep nonapplicable specification fi
 
 Follow `資料銜接與檔案驗證` in [shared finding rules](../../FINDING-RULES.md). Verify training and testing as separate input roles before fitting or evaluating anything.
 
-- Select the student's explicitly identified files, or `PROJECT.md` → `Data Artifacts` rows whose roles and samples match the prediction task. Read each file's linked documentation; never infer train/test identity from modification time or the first glob match. If role or version is ambiguous, ask before proceeding. Do not swap roles or use one file for both merely to make the code run.
+- Select the student's explicitly identified files, or `PROJECT-PROPOSAL.md` → `Data Artifacts` rows whose roles and samples match the prediction task. Read each file's linked documentation; never infer train/test identity from modification time or the first glob match. If role or version is ambiguous, ask before proceeding. Do not swap roles or use one file for both merely to make the code run.
 - For each role, resolve its exact project-relative file under `data/processed/` and verify existence, schema, required predictors, observation unit, and documented key/uniqueness expectations. Verify the training target; for an intentionally unlabeled test set, document the missing target and apply the existing unavailable-metric rules. Check split overlap and independence against the documented split unit, such as entity or entity-time, rather than assuming all repeated entity IDs are invalid.
 - Compute SHA-256 from each actual file and compare it with its registered verified hash. If a clearly identified, suitable processed file has no row or hash, verify and register its exact data path, documentation, processing notebook, role, verification status, and actual hash. Use [processed-data-documentation](../processed-data-documentation/SKILL.md) when needed. Externally prepared files may name their producing notebook `not available`; a missing producer is not itself a reason to recreate a valid split.
 - On a hash mismatch, establish whether the authorized task produced or requested a new data version. Reverify an evidenced replacement, then update its index and the current analysis's bindings. Do not simply replace the expected hash, pick a different file, or continue with an unresolved version; ask when intent cannot be established.

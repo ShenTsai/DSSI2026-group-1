@@ -18,7 +18,7 @@ format-confirmation step when the student has already chosen Stata.
 Read the [shared course rules](../../FINDING-RULES.md) first.
 Then inspect only the files needed for the task:
 
-- the student's request and explicit preferences in `PROJECT.md`
+- the student's request and explicit preferences in `PROJECT-PROPOSAL.md`
 - the relevant existing Markdown record in `finding/`
 - Stata output, code, or a document excerpt supplied for this task
 - relevant analysis data in `data/processed/` when code or execution is requested
@@ -72,7 +72,7 @@ conversation; do not request it again. A local draft or link-only record is not
 a completed substantive finding.
 
 For narrative text, follow the student's explicit report-language choice in chat
-or `PROJECT.md`; otherwise use the teacher default: Traditional Chinese as used
+or `PROJECT-PROPOSAL.md`; otherwise use the teacher default: Traditional Chinese as used
 in Taiwan (`zh-TW`), with Taiwan-local terminology and phrasing. Do not ask for a
 language choice or delay work when none is specified. If recorded, label this as
 a teacher default, not an explicit student answer. Retain the template's original
