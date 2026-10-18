@@ -1,0 +1,412 @@
+---
+title: "youbike_flow_hourly"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = FALSE)
+# Global options for knitr go here if needed
+## knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# README
+
+- **Author**: `蔡睿燊`
+- **Created At**: `2026-10-18`
+- **Last Modified At**: `2026-10-18`
+
+---
+
+## What does this file do?
+
+- 建立 2024 年**日曆表**（一日一列）：
+  - `weekday`：上班日 = 1。週一至週五為 1，但國定假日與臺北市颱風停班停課日為 0；補班的週六為 1（組員 2026-10-18 確認）。
+  - `semester`：臺大上課學期內 = 1。112-2 為 2024-02-19 至 2024-06-09，113-1 為 2024-09-02 至 2024-12-20（組員 2026-10-18 提供），其餘（寒暑假）為 0。
+- 把研究範圍內 86 站的分鐘級狀態更新，彙整成**站點 × 整點**的借還流量，並合併到既有的站點 × 整點天氣 panel 與日曆：
+  - 每一筆更新相對於同站前一筆的可借車數變化稱為一個「步」（step）。來源約每 2 分鐘更新一次（中位數 1.9 分鐘）。
+  - **調度判定**（組員 2026-10-18 決定改用分鐘級判定，門檻由 AI 提議）：單一步的 |變化| ≥ 10 輛視為調度車補車或移車。全年單一步 |變化| 的 99.9% 分位數為 9 輛，一般騎乘在兩分鐘內很難造成 10 輛以上的變化。原本以「一小時淨變化 ≥ 25」判定的方式會把大量真實尖峰需求當成調度：這些小時中位數有 33 次更新、單步變化中位數只有 6 輛，大多數變化由許多小步累積而成。
+  - 每個時段 (t − 1 小時, t] 的流量由該區間內的步加總而成；該區間的淨變化等於 t 與 t − 1 兩個整點快照的差（下方有 assertion 核對）。
+- 只有 t 與 t − 1 兩個整點快照都可用（見 `data/code/youbike_weather_hourly.Rmd` 的缺值規則）時才計算流量，否則流量欄位為 `NA`。`ServiceStatus` 原樣保留並附上前一整點狀態，由下游分析決定是否排除停止營運時段。
+
+---
+
+## What does this file take?
+
+- **Source Data Sets** (one entry per actual file):
+  1. `data/processed/youbike_rental_in_field_2024.parquet`
+     - Input key: `rental_in_field`
+     - Description: 研究範圍內 86 站的 2024 年狀態更新紀錄，一列為 `StationUID` × `SrcUpdateTime`，8,112,511 列 × 11 欄。
+     - Documentation: `data/processed/youbike_rental_in_field_2024_doc.Rmd`
+     - SHA-256: `ef6160f4c50aa0b951419304f29a6eb572b65b6027cf027b0d2b107525981e4e`
+  2. `data/processed/youbike_weather_hourly_2024.parquet`
+     - Input key: `youbike_weather_hourly`
+     - Description: 站點 × 整點狀態快照與臺北站天氣，86 × 8,784 = 755,424 列 × 15 欄。
+     - Documentation: `data/code/youbike_weather_hourly.Rmd`（processed-data 文件待建立）
+     - SHA-256: `c09ab33c7fe724c6479f4cfab3c7933403b045c64b6ecb5e8c29d1b3c52678fe`
+- 國定假日、補班日與颱風假日期：依行政院人事行政總處 113 年辦公日曆表與組員確認的清單手動輸入於下方程式碼（2026-10-18）。學期日期由組員提供。
+
+---
+
+## What does this file output?
+
+- `data/processed/calendar_2024.csv`
+  - Output key: `calendar`
+  - Description: 2024 年每日一列，366 列 × 5 欄：`date`、`day_of_week`（1 = 週一）、`weekday`（上班日 = 1）、`semester`（上課學期 = 1）、`day_off_reason`（非週末休假日或補班日的說明，其餘為空）。
+  - Role: `analysis`（日曆共變數）
+  - Documentation: 本檔
+  - Expected schema and row-count rules: 366 列，`date` 不重複且連續；`weekday`、`semester` 只有 0／1。
+- `data/processed/youbike_flow_hourly_2024.parquet`
+  - Output key: `youbike_flow_hourly`
+  - Description: 站點 × 整點 panel，保留 `youbike_weather_hourly_2024.parquet` 的全部 15 欄，再加上：
+    - `prev_ServiceStatus`：t − 1 整點的營運狀態。
+    - `net_flow`：t 與 t − 1 可借車數的差（輛；+ 為淨增加）。
+    - `n_updates`：(t − 1, t] 內的更新筆數。
+    - `rider_return`、`rider_rent`：|變化| < 10 的增加步與減少步加總（輛，皆為非負）。兩分鐘內的借與還會互相抵銷，可能低估；但部分站時的可借車數會在相鄰更新間 ±1 來回跳動（例如 2024-01-01 凌晨 `TPE500101001` 一小時 57 筆更新、還 9 借 9、淨 0），又會高估。兩者都無法分辨，**不可直接當作借還次數**，下游以 `rider_net_flow` 為主。
+    - `dispatch_in`、`dispatch_out`：|變化| ≥ 10 的增加步與減少步加總（輛，皆為非負）。
+    - `rider_net_flow` = `rider_return` − `rider_rent` = `net_flow` −（`dispatch_in` − `dispatch_out`）。
+    - `max_step`：該小時最大的單步 |變化|（輛），供下游改用其他門檻時參考。
+    - `period_date`、`hour_of_day`：時段 (t − 1, t] 起點的日期與小時；`weekday`、`semester`：依 `period_date` 合併日曆。
+  - Role: `analysis`
+  - Documentation: 本檔（processed-data 文件待建立）
+  - Expected schema and row-count rules: 755,424 列 × 28 欄；(`StationUID`, `datetime`) 不重複；流量欄位只在兩個快照都可用時有值，此時 `net_flow` = 步的加總、`rider_net_flow` + `dispatch_in` − `dispatch_out` = `net_flow`。
+  - Verification status / SHA-256: 見最後一個 chunk 的實際輸出與下方「執行結果」。
+  - Downstream finding input: `finding/youbike_eda.Rmd`
+
+All paths are relative to the project root, not the operating-system root.
+
+```{r}
+library(tidyverse)
+library(arrow)
+
+find_project_root <- function(start = getwd()) {
+  candidate <- normalizePath(start, winslash = "/", mustWork = TRUE)
+  repeat {
+    if (file.exists(file.path(candidate, "AGENTS.md")) &&
+        dir.exists(file.path(candidate, "templates"))) return(candidate)
+    parent <- dirname(candidate)
+    if (identical(parent, candidate)) stop("Open this notebook within the student project containing AGENTS.md and templates/.")
+    candidate <- parent
+  }
+}
+PROJECT_ROOT <- find_project_root()
+
+project_file <- function(relative_path, area, must_exist = TRUE) {
+  # Exact project-relative paths only; no first-file search or OS-root /data path.
+  parts <- strsplit(relative_path, "/", fixed = TRUE)[[1]]
+  if (grepl("^(/|~|[A-Za-z]:)", relative_path) || ".." %in% parts ||
+      grepl("<", relative_path, fixed = TRUE) ||
+      !startsWith(relative_path, paste0("data/", area, "/"))) {
+    stop("Replace the placeholder with an exact path inside data/", area, "/: ", relative_path)
+  }
+  path <- file.path(PROJECT_ROOT, relative_path)
+  if (must_exist && (!file.exists(path) || dir.exists(path))) stop("Input file not found: ", path)
+  # Resolve existing ancestors to reject a path that leaves the project via a symlink.
+  ancestor <- path
+  while (!file.exists(ancestor)) ancestor <- dirname(ancestor)
+  resolved <- normalizePath(ancestor, winslash = "/", mustWork = TRUE)
+  allowed <- normalizePath(file.path(PROJECT_ROOT, "data", area), winslash = "/", mustWork = TRUE)
+  if (!startsWith(allowed, paste0(PROJECT_ROOT, "/"))) {
+    stop("data/", area, "/ resolves outside the project root.")
+  }
+  if (!identical(resolved, allowed) && !startsWith(resolved, paste0(allowed, "/"))) {
+    stop("Resolved path leaves data/", area, "/: ", relative_path)
+  }
+  path
+}
+
+sha256_file <- function(path) {
+  if (!requireNamespace("digest", quietly = TRUE)) {
+    stop("Cannot verify input identity: digest is unavailable. Use an available SHA-256 implementation before loading data.")
+  }
+  digest::digest(file = path, algo = "sha256", serialize = FALSE)
+}
+
+verify_input_sha256 <- function(path, expected) {
+  # Bind this run to the exact file inspected when the notebook was prepared.
+  if (!is.character(expected) || length(expected) != 1L || is.na(expected) ||
+      !grepl("^[0-9a-fA-F]{64}$", expected)) {
+    stop("Fill the expected SHA-256 from the inspected input before loading data.")
+  }
+  actual <- sha256_file(path)
+  if (!identical(actual, tolower(expected))) stop("Input changed: identify the new version before loading ", basename(path), ".")
+  actual
+}
+```
+
+## 綁定輸入檔
+
+```{r}
+INPUTS <- c(
+  rental_in_field = "data/processed/youbike_rental_in_field_2024.parquet",
+  youbike_weather_hourly = "data/processed/youbike_weather_hourly_2024.parquet"
+)
+EXPECTED_INPUT_SHA256 <- c(
+  rental_in_field = "ef6160f4c50aa0b951419304f29a6eb572b65b6027cf027b0d2b107525981e4e",
+  youbike_weather_hourly = "c09ab33c7fe724c6479f4cfab3c7933403b045c64b6ecb5e8c29d1b3c52678fe"
+)
+OUTPUTS <- c(
+  calendar = "data/processed/calendar_2024.csv",
+  youbike_flow_hourly = "data/processed/youbike_flow_hourly_2024.parquet"
+)
+
+input_paths <- vapply(INPUTS, project_file, character(1), area = "processed")
+output_paths <- vapply(OUTPUTS, project_file, character(1), area = "processed", must_exist = FALSE)
+stopifnot(!any(output_paths %in% input_paths))
+if (any(file.exists(output_paths))) stop("Review existing outputs before replacing them.")
+
+input_fingerprints <- map_chr(names(input_paths), \(key) {
+  verify_input_sha256(input_paths[[key]], EXPECTED_INPUT_SHA256[[key]])
+}) |>
+  set_names(names(input_paths))
+
+rental_in_field <- read_parquet(input_paths[["rental_in_field"]])
+youbike_weather_hourly <- read_parquet(input_paths[["youbike_weather_hourly"]])
+
+stopifnot(
+  nrow(rental_in_field) == 8112511L,
+  !anyDuplicated(select(rental_in_field, StationUID, SrcUpdateTime)),
+  nrow(youbike_weather_hourly) == 86L * 8784L,
+  !anyDuplicated(select(youbike_weather_hourly, StationUID, datetime)),
+  identical(attr(youbike_weather_hourly$datetime, "tzone"), "Asia/Taipei"),
+  identical(attr(rental_in_field$SrcUpdateTime, "tzone"), "Asia/Taipei")
+)
+```
+
+## 日曆表
+
+```{r}
+# Weekday days off in 2024 (DGPA 113 calendar) and Taipei typhoon days, as confirmed by the team.
+DAYS_OFF <- tribble(
+  ~date, ~day_off_reason,
+  "2024-01-01", "開國紀念日",
+  "2024-02-08", "春節",
+  "2024-02-09", "春節",
+  "2024-02-12", "春節",
+  "2024-02-13", "春節",
+  "2024-02-14", "春節",
+  "2024-02-28", "和平紀念日",
+  "2024-04-04", "兒童節及清明節",
+  "2024-04-05", "兒童節及清明節",
+  "2024-05-01", "勞動節",
+  "2024-06-10", "端午節",
+  "2024-07-24", "颱風假（凱米）",
+  "2024-07-25", "颱風假（凱米）",
+  "2024-09-17", "中秋節",
+  "2024-10-02", "颱風假（山陀兒）",
+  "2024-10-03", "颱風假（山陀兒）",
+  "2024-10-04", "颱風假（山陀兒）",
+  "2024-10-10", "國慶日",
+  "2024-10-31", "颱風假（康芮）"
+) |>
+  mutate(date = as.Date(date))
+MAKEUP_WORKDAYS <- tibble(date = as.Date("2024-02-17"), day_off_reason = "補班")
+SEMESTERS <- tribble(
+  ~term, ~start, ~end,
+  "112-2", "2024-02-19", "2024-06-09",
+  "113-1", "2024-09-02", "2024-12-20"
+) |>
+  mutate(across(c(start, end), as.Date))
+
+stopifnot(
+  all(wday(DAYS_OFF$date, week_start = 1) <= 5),
+  all(wday(MAKEUP_WORKDAYS$date, week_start = 1) >= 6)
+)
+
+calendar <- tibble(date = seq(as.Date("2024-01-01"), as.Date("2024-12-31"), by = "day")) |>
+  left_join(bind_rows(DAYS_OFF, MAKEUP_WORKDAYS), join_by(date), relationship = "one-to-one") |>
+  mutate(
+    day_of_week = wday(date, week_start = 1),
+    weekday = as.integer(
+      date %in% MAKEUP_WORKDAYS$date |
+        (day_of_week <= 5 & !date %in% DAYS_OFF$date)
+    ),
+    semester = as.integer(map_lgl(date, \(day) any(day >= SEMESTERS$start & day <= SEMESTERS$end)))
+  ) |>
+  select(date, day_of_week, weekday, semester, day_off_reason)
+
+stopifnot(
+  nrow(calendar) == 366L,
+  !anyDuplicated(calendar$date),
+  all(calendar$weekday %in% 0:1),
+  all(calendar$semester %in% 0:1)
+)
+
+calendar |>
+  count(weekday, semester)
+calendar |>
+  filter(!is.na(day_off_reason))
+```
+
+## 由分鐘級更新計算每小時借還與調度
+
+```{r}
+DISPATCH_STEP <- 10
+
+# One step = change in rentable bikes from the previous update of the same station.
+# A step belongs to period (t - 1h, t] when its update time falls in that interval.
+steps <- rental_in_field |>
+  select(StationUID, SrcUpdateTime, AvailableRentBikes) |>
+  arrange(StationUID, SrcUpdateTime) |>
+  mutate(
+    step = AvailableRentBikes - lag(AvailableRentBikes),
+    gap_min = as.numeric(SrcUpdateTime - lag(SrcUpdateTime), units = "mins"),
+    .by = StationUID
+  ) |>
+  filter(!is.na(step)) |>
+  mutate(datetime = ceiling_date(SrcUpdateTime, "hour", change_on_boundary = FALSE))
+
+# Distribution used to set the dispatch threshold.
+steps |>
+  summarise(
+    steps = n(),
+    median_gap_min = median(gap_min),
+    p999_abs_step = quantile(abs(step), 0.999),
+    share_abs_step_ge_10 = mean(abs(step) >= DISPATCH_STEP),
+    share_abs_step_ge_20 = mean(abs(step) >= 20)
+  )
+
+hourly_steps <- steps |>
+  summarise(
+    n_updates = n(),
+    step_sum = sum(step),
+    rider_return = sum(step[step > 0 & step < DISPATCH_STEP]),
+    rider_rent = -sum(step[step < 0 & step > -DISPATCH_STEP]),
+    dispatch_in = sum(step[step >= DISPATCH_STEP]),
+    dispatch_out = -sum(step[step <= -DISPATCH_STEP]),
+    max_step = max(abs(step)),
+    .by = c(StationUID, datetime)
+  )
+stopifnot(!anyDuplicated(select(hourly_steps, StationUID, datetime)))
+```
+
+## 合併到站點 × 整點 panel
+
+```{r}
+flow_columns <- c("n_updates", "rider_return", "rider_rent", "dispatch_in", "dispatch_out", "max_step")
+
+youbike_flow_hourly <- youbike_weather_hourly |>
+  arrange(StationUID, datetime) |>
+  mutate(
+    prev_ServiceStatus = lag(ServiceStatus),
+    net_flow = AvailableRentBikes - lag(AvailableRentBikes),
+    .by = StationUID
+  ) |>
+  left_join(hourly_steps, join_by(StationUID, datetime), relationship = "one-to-one") |>
+  mutate(
+    # Hours without any update but with two valid snapshots had no change.
+    across(all_of(c(flow_columns, "step_sum")), \(value) if_else(!is.na(net_flow) & is.na(value), 0, value)),
+    across(all_of(c(flow_columns, "step_sum")), \(value) if_else(is.na(net_flow), NA, value)),
+    rider_net_flow = rider_return - rider_rent,
+    period_date = as_date(datetime - hours(1)),
+    hour_of_day = hour(datetime - hours(1))
+  ) |>
+  left_join(select(calendar, date, weekday, semester), join_by(period_date == date), relationship = "many-to-one", unmatched = "drop")
+
+stopifnot(
+  nrow(youbike_flow_hourly) == 86L * 8784L,
+  !anyDuplicated(select(youbike_flow_hourly, StationUID, datetime)),
+  # Steps inside (t - 1h, t] add up to the difference between the two snapshots.
+  with(youbike_flow_hourly, all(is.na(net_flow) | step_sum == net_flow)),
+  with(youbike_flow_hourly, all(is.na(net_flow) | rider_net_flow + dispatch_in - dispatch_out == net_flow)),
+  # Only the 2024-01-01 00:00 rows describe a 2023 period; they have no flow either.
+  with(youbike_flow_hourly, all(!is.na(weekday) | (period_date < as.Date("2024-01-01") & is.na(net_flow))))
+)
+
+youbike_flow_hourly <- youbike_flow_hourly |>
+  mutate(across(all_of(flow_columns), as.integer)) |>
+  select(
+    StationUID, datetime, period_date, hour_of_day, weekday, semester,
+    ServiceStatus, prev_ServiceStatus, AvailableRentBikes, AvailableReturnBikes, GeneralBikes, ElectricBikes,
+    status_time, status_age_min, status_missing_reason,
+    net_flow, rider_net_flow, rider_return, rider_rent, dispatch_in, dispatch_out, n_updates, max_step,
+    Temp, HUMD, D24R, D24R_trace, rain
+  )
+
+glimpse(youbike_flow_hourly)
+colSums(is.na(youbike_flow_hourly))
+```
+
+```{r}
+# Values to note for downstream analysis (normal service at both snapshots).
+flow_valid <- youbike_flow_hourly |>
+  filter(ServiceStatus == "正常營運", prev_ServiceStatus == "正常營運", !is.na(net_flow))
+
+flow_valid |>
+  summarise(
+    station_hours = n(),
+    hours_with_dispatch = sum(dispatch_in + dispatch_out > 0),
+    dispatch_bikes = sum(dispatch_in + dispatch_out),
+    rider_bikes = sum(rider_return + rider_rent),
+    hours_abs_net_ge_25 = sum(abs(net_flow) >= 25),
+    hours_abs_net_ge_25_with_dispatch = sum(abs(net_flow) >= 25 & dispatch_in + dispatch_out > 0)
+  )
+
+# Hours whose net change came mostly from dispatch, by station.
+flow_valid |>
+  summarise(
+    hours_with_dispatch = sum(dispatch_in + dispatch_out > 0),
+    dispatch_bikes = sum(dispatch_in + dispatch_out),
+    .by = StationUID
+  ) |>
+  arrange(desc(dispatch_bikes)) |>
+  head(10)
+```
+
+## 寫出與讀回驗證
+
+```{r}
+outputs <- list(calendar = calendar, youbike_flow_hourly = youbike_flow_hourly)
+stopifnot(setequal(names(outputs), names(OUTPUTS)))
+
+verification <- list()
+for (key in names(outputs)) {
+  path <- output_paths[[key]]
+  if (file.exists(path)) stop("Output already exists; review it before replacing: ", path)
+  frame <- outputs[[key]]
+  if (key == "calendar") {
+    write_csv(frame, path, na = "")
+    reread <- read_csv(
+      path,
+      col_types = cols(date = col_date(), day_of_week = "i", weekday = "i", semester = "i", day_off_reason = "c"),
+      na = ""
+    )
+  } else {
+    write_parquet(frame, path, compression = "zstd")
+    reread <- read_parquet(path)
+    stopifnot(identical(attr(reread$datetime, "tzone"), "Asia/Taipei"))
+  }
+  stopifnot(
+    identical(names(reread), names(frame)),
+    nrow(reread) == nrow(frame),
+    isTRUE(all.equal(as.data.frame(frame), as.data.frame(reread), check.attributes = FALSE))
+  )
+  verification[[key]] <- list(
+    data_path = OUTPUTS[[key]],
+    rows = nrow(reread),
+    columns = ncol(reread),
+    size_mb = round(file.size(path) / 1e6, 2),
+    sha256 = sha256_file(path),
+    status = "read-back checks passed"
+  )
+  print(verification[[key]])
+}
+
+# Inputs must be unchanged after processing.
+for (key in names(input_paths)) {
+  stopifnot(identical(sha256_file(input_paths[[key]]), input_fingerprints[[key]]))
+}
+```
+
+## 執行結果
+
+2026-10-18 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）完整執行。以下為該次實際輸出：
+
+- 輸入核對：兩個輸入檔的 SHA-256 皆與預期一致，執行後未改變。
+- 日曆：366 天；上班日 244 天（其中上課學期 150 天）、非上班日 122 天；學期內 222 天。非週末休假日 19 天（含颱風假 6 天）、補班日 1 天（2024-02-17）。
+- 步：8,112,425 個；相鄰更新間隔中位數 1.9 分鐘；單步 |變化| 99.9% 分位數 9 輛，≥ 10 輛的步占 0.082%、≥ 20 輛占 0.0082%。
+- 合併：755,424 列 × 28 欄，(`StationUID`, `datetime`) 不重複；所有兩個快照都可用的站時，步的加總都等於 `net_flow`，`rider_net_flow` + `dispatch_in` − `dispatch_out` 也都等於 `net_flow`。流量欄位缺 64,593 站時（與上游快照缺值一致）；`weekday`／`semester` 只在 2024-01-01 00:00 的 86 列（描述 2023-12-31 23 時）為 `NA`。
+- 兩個整點皆「正常營運」的 684,702 站時中：5,537 站時含調度步，調度共 85,975 輛次，占全部 |淨流量| 的 3.5%；其中 364 站時同一小時既有 ≥ 10 的增加也有 ≥ 10 的減少（可能是調度，也可能是資料短暫跳動）。含調度的站時最多在 12 時、15–18 時。調度量最多的站為 `TPE500101022`（20,385 輛次）與 `TPE500101181`（11,968 輛次），即捷運公館站 2、3 號出口。
+- 原本 |淨流量| ≥ 25 的 7,193 站時中只有 1,330 個（18%）含調度步；扣除調度後仍有 6,649 站時 |騎乘淨流量| ≥ 25，支持「這些大幅變化多數是真實尖峰需求」。
+- 讀回檢查全部通過。
+- 輸出：
+  - `data/processed/calendar_2024.csv`：366 列 × 5 欄，SHA-256 `f95e69ce018015334456d049a2cb9492ed2a7be6a689b1abb17d8adfcd20a115`
+  - `data/processed/youbike_flow_hourly_2024.parquet`：755,424 列 × 28 欄，10.65 MB（zstd），SHA-256 `7f9f4c2a17ce02f7b92902471e0accb7eef5e3447e0aafd5b195b3b2d98330d0`

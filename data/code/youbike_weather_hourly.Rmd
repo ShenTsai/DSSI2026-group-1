@@ -1,0 +1,361 @@
+---
+title: "youbike_weather_hourly"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = FALSE)
+# Global options for knitr go here if needed
+## knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# README
+
+- **Author**: `待確認`
+- **Created At**: `2026-10-18`
+- **Last Modified At**: `2026-10-18`
+
+---
+
+## What does this file do?
+
+- 把研究範圍內 86 個 YouBike 站點的狀態更新紀錄，整理成**站點 × 整點**的平衡 panel（2024-01-01 00:00 至 2024-12-31 23:00，每站 8,784 小時），再以 `datetime` 合併臺北站逐時天氣。
+- 站點狀態的取法（組員 2026-10-18 決定）：每個整點 t 取該站在 t 當下或之前**最後一筆**狀態更新（`SrcUpdateTime` ≤ t）。來源大致只在狀態變動時才有紀錄，所以兩筆之間沿用前一筆是合理的。
+- 不沿用舊狀態的情況（狀態欄位設為 `NA`，原因記在 `status_missing_reason`）：
+  - `no record yet`：該站在 t 之前還沒有任何紀錄（例如 2024-08 以後才出現的新站）。
+  - `no-data day`：從最後一筆紀錄到 t 之間跨過整天無 YouBike 資料的日期（2024-10-31、11-01–11-03、11-07–11-11、12-10，原始檔為空）。那幾天的狀態未知，不能把前一天的狀態延續過去。
+  - `stale > 24h`：最後一筆紀錄距 t 超過 24 小時（`MAX_STATUS_AGE`）。夜間 6–12 小時沒有變動很常見，但超過一天沒有任何更新的站多半是停用或資料缺漏（例如 `TPE500119059` 全年只有 204 天有紀錄）。保留 `status_age_min` 供下游改用更嚴格的門檻。
+- 時間對齊：天氣列 `datetime` = t 描述區間 (t − 60 分鐘, t]（見 `data/code/weather_taipei_2024.Rmd`）；站點狀態是 t 當下的快照。兩者都只使用 t 之前（含 t）的資訊。
+- `ServiceStatus` 原樣保留（含「停止營運」），由下游分析決定是否排除。不補值、不做 train/test 切分。
+
+---
+
+## What does this file take?
+
+- **Source Data Sets** (one entry per actual file):
+  1. `data/processed/youbike_rental_in_field_2024.parquet`
+     - Input key: `rental_in_field`
+     - Description: 研究範圍內 86 站的 2024 年站點狀態更新紀錄，一列為 `StationUID` × `SrcUpdateTime`，8,112,511 列 × 11 欄。
+     - Documentation: `data/processed/youbike_rental_in_field_2024_doc.Rmd`
+     - SHA-256: `ef6160f4c50aa0b951419304f29a6eb572b65b6027cf027b0d2b107525981e4e`
+  2. `data/processed/weather_taipei_2024_hourly.csv`
+     - Input key: `weather_hourly`
+     - Description: 臺北站（466920）2024 年逐時天氣，一列為一個整點 `datetime`，8,784 列 × 6 欄。
+     - Documentation: `data/code/weather_taipei_2024.Rmd`（processed-data 文件待建立）
+     - SHA-256: `fe3af4b782fe20a91b602b218150bc33a7bf3436963dca4f8b217d2a7a659fa3`
+
+---
+
+## What does this file output?
+
+- `data/processed/youbike_weather_hourly_2024.parquet`
+  - Output key: `youbike_weather_hourly`
+  - Description: 站點 × 整點 panel。欄位：`StationUID`、`datetime`；站點狀態 `ServiceStatus`、`AvailableRentBikes`、`AvailableReturnBikes`、`GeneralBikes`、`ElectricBikes`；`status_time`（所用紀錄的 `SrcUpdateTime`）、`status_age_min`（t − `status_time`，分鐘）、`status_missing_reason`；天氣 `Temp`、`HUMD`、`D24R`、`D24R_trace`、`rain`。
+  - Role: `analysis`
+  - Documentation: pending（processed-data 文件待建立）
+  - Expected schema and row-count rules: 15 欄；86 × 8,784 = 755,424 列；(`StationUID`, `datetime`) 不重複；`status_time` ≤ `datetime`；狀態欄位只在 `status_missing_reason` 為 `NA` 時有值；天氣欄位與天氣檔同一 `datetime` 的值相同。
+  - Verification status / SHA-256: 見最後一個 chunk 的實際輸出與下方「執行結果」。
+  - Downstream finding input: `data/processed/youbike_weather_hourly_2024.parquet` (same exact file)
+
+### 為什麼存成 Parquet
+
+- 約 75 萬列，存成 Parquet 可保留整數與含時區的時間型別，與上游 `youbike_rental_in_field_2024.parquet` 一致；讀取用 `arrow::read_parquet(path)`，回傳一般的 tibble。
+
+All paths are relative to the project root, not the operating-system root.
+
+```{r}
+library(tidyverse)
+library(arrow)
+
+find_project_root <- function(start = getwd()) {
+  candidate <- normalizePath(start, winslash = "/", mustWork = TRUE)
+  repeat {
+    if (file.exists(file.path(candidate, "AGENTS.md")) &&
+        dir.exists(file.path(candidate, "templates"))) return(candidate)
+    parent <- dirname(candidate)
+    if (identical(parent, candidate)) stop("Open this notebook within the student project containing AGENTS.md and templates/.")
+    candidate <- parent
+  }
+}
+PROJECT_ROOT <- find_project_root()
+
+project_file <- function(relative_path, area, must_exist = TRUE) {
+  # Exact project-relative paths only; no first-file search or OS-root /data path.
+  parts <- strsplit(relative_path, "/", fixed = TRUE)[[1]]
+  if (grepl("^(/|~|[A-Za-z]:)", relative_path) || ".." %in% parts ||
+      grepl("<", relative_path, fixed = TRUE) ||
+      !startsWith(relative_path, paste0("data/", area, "/"))) {
+    stop("Replace the placeholder with an exact path inside data/", area, "/: ", relative_path)
+  }
+  path <- file.path(PROJECT_ROOT, relative_path)
+  if (must_exist && (!file.exists(path) || dir.exists(path))) stop("Input file not found: ", path)
+  # Resolve existing ancestors to reject a path that leaves the project via a symlink.
+  ancestor <- path
+  while (!file.exists(ancestor)) ancestor <- dirname(ancestor)
+  resolved <- normalizePath(ancestor, winslash = "/", mustWork = TRUE)
+  allowed <- normalizePath(file.path(PROJECT_ROOT, "data", area), winslash = "/", mustWork = TRUE)
+  if (!startsWith(allowed, paste0(PROJECT_ROOT, "/"))) {
+    stop("data/", area, "/ resolves outside the project root.")
+  }
+  if (!identical(resolved, allowed) && !startsWith(resolved, paste0(allowed, "/"))) {
+    stop("Resolved path leaves data/", area, "/: ", relative_path)
+  }
+  path
+}
+
+sha256_file <- function(path) {
+  if (!requireNamespace("digest", quietly = TRUE)) {
+    stop("Cannot verify input identity: digest is unavailable. Use an available SHA-256 implementation before loading data.")
+  }
+  digest::digest(file = path, algo = "sha256", serialize = FALSE)
+}
+
+verify_input_sha256 <- function(path, expected) {
+  # Bind this run to the exact file inspected when the notebook was prepared.
+  if (!is.character(expected) || length(expected) != 1L || is.na(expected) ||
+      !grepl("^[0-9a-fA-F]{64}$", expected)) {
+    stop("Fill the expected SHA-256 from the inspected input before loading data.")
+  }
+  actual <- sha256_file(path)
+  if (!identical(actual, tolower(expected))) stop("Input changed: identify the new version before loading ", basename(path), ".")
+  actual
+}
+```
+
+## 綁定輸入檔
+
+```{r}
+INPUTS <- c(
+  rental_in_field = "data/processed/youbike_rental_in_field_2024.parquet",
+  weather_hourly = "data/processed/weather_taipei_2024_hourly.csv"
+)
+EXPECTED_INPUT_SHA256 <- c(
+  rental_in_field = "ef6160f4c50aa0b951419304f29a6eb572b65b6027cf027b0d2b107525981e4e",
+  weather_hourly = "fe3af4b782fe20a91b602b218150bc33a7bf3436963dca4f8b217d2a7a659fa3"
+)
+OUTPUTS <- c(youbike_weather_hourly = "data/processed/youbike_weather_hourly_2024.parquet")
+
+input_paths <- vapply(INPUTS, project_file, character(1), area = "processed")
+output_paths <- vapply(OUTPUTS, project_file, character(1), area = "processed", must_exist = FALSE)
+stopifnot(!any(output_paths %in% input_paths))
+if (any(file.exists(output_paths))) stop("Review existing outputs before replacing them.")
+
+input_fingerprints <- map_chr(names(input_paths), \(key) {
+  verify_input_sha256(input_paths[[key]], EXPECTED_INPUT_SHA256[[key]])
+}) |>
+  set_names(names(input_paths))
+
+rental_in_field <- read_parquet(input_paths[["rental_in_field"]])
+
+weather_hourly <- read_csv(
+  input_paths[["weather_hourly"]],
+  col_types = cols(
+    datetime = col_datetime(format = "%Y-%m-%d %H:%M:%S"),
+    Temp = "d", HUMD = "d", D24R = "d", D24R_trace = "l", rain = "i"
+  ),
+  locale = locale(tz = "Asia/Taipei"),
+  na = ""
+)
+
+stopifnot(
+  nrow(rental_in_field) == 8112511L,
+  identical(attr(rental_in_field$SrcUpdateTime, "tzone"), "Asia/Taipei"),
+  !anyDuplicated(select(rental_in_field, StationUID, SrcUpdateTime)),
+  nrow(problems(weather_hourly)) == 0L,
+  nrow(weather_hourly) == 366L * 24L,
+  !anyDuplicated(weather_hourly$datetime),
+  all(diff(as.numeric(weather_hourly$datetime)) == 3600)
+)
+
+glimpse(rental_in_field)
+glimpse(weather_hourly)
+```
+
+## 找出整天無資料的日期
+
+```{r}
+all_dates <- seq(as.Date("2024-01-01"), as.Date("2024-12-31"), by = "day")
+no_data_dates <- as.Date(setdiff(all_dates, unique(rental_in_field$source_date)))
+no_data_dates
+stopifnot(length(no_data_dates) == 10L)
+
+station_coverage <- rental_in_field |>
+  group_by(StationUID) |>
+  summarise(
+    first_update = min(SrcUpdateTime),
+    last_update = max(SrcUpdateTime),
+    days_with_rows = n_distinct(source_date)
+  )
+station_coverage |>
+  arrange(desc(first_update)) |>
+  head(8)
+station_coverage |>
+  arrange(days_with_rows) |>
+  head(5)
+```
+
+## 建立站點 × 整點格點並取最後一筆狀態
+
+```{r}
+MAX_STATUS_AGE <- hours(24)
+STATUS_COLUMNS <- c("ServiceStatus", "AvailableRentBikes", "AvailableReturnBikes", "GeneralBikes", "ElectricBikes")
+
+station_hour_grid <- expand_grid(
+  StationUID = sort(unique(rental_in_field$StationUID)),
+  datetime = weather_hourly$datetime
+)
+stopifnot(nrow(station_hour_grid) == 86L * 8784L)
+
+status_updates <- rental_in_field |>
+  select(StationUID, status_time = SrcUpdateTime, all_of(STATUS_COLUMNS))
+
+station_hourly <- station_hour_grid |>
+  left_join(status_updates, join_by(StationUID, closest(datetime >= status_time)))
+stopifnot(nrow(station_hourly) == nrow(station_hour_grid))
+
+# A no-data day d covers [d 00:00, d+1 00:00); the carried status is invalid if
+# the stretch from status_time to datetime overlaps any of those days.
+crosses_no_data_day <- function(status_time, datetime) {
+  day_starts <- as.POSIXct(as.character(no_data_dates), tz = "Asia/Taipei")
+  map2(day_starts, day_starts + days(1), \(day_start, day_end) {
+    status_time < day_end & datetime > day_start
+  }) |>
+    reduce(`|`)
+}
+
+station_hourly <- station_hourly |>
+  mutate(
+    status_age_min = as.numeric(datetime - status_time, units = "mins"),
+    status_missing_reason = case_when(
+      is.na(status_time) ~ "no record yet",
+      crosses_no_data_day(status_time, datetime) ~ "no-data day",
+      status_age_min > as.numeric(MAX_STATUS_AGE, units = "mins") ~ "stale > 24h",
+      .default = NA_character_
+    ),
+    across(all_of(STATUS_COLUMNS), \(value) if_else(is.na(status_missing_reason), value, NA))
+  )
+
+station_hourly |>
+  count(status_missing_reason)
+
+# Age of the status actually used.
+station_hourly |>
+  filter(is.na(status_missing_reason)) |>
+  summarise(
+    median_age_min = median(status_age_min),
+    p90_age_min = quantile(status_age_min, 0.9),
+    p99_age_min = quantile(status_age_min, 0.99),
+    max_age_min = max(status_age_min)
+  )
+```
+
+## 合併天氣
+
+天氣檔一個 `datetime` 一列，因此是多對一合併，不會增加列數。
+
+```{r}
+youbike_weather_hourly <- station_hourly |>
+  left_join(weather_hourly, join_by(datetime), relationship = "many-to-one", unmatched = "error") |>
+  select(
+    StationUID, datetime, all_of(STATUS_COLUMNS),
+    status_time, status_age_min, status_missing_reason,
+    Temp, HUMD, D24R, D24R_trace, rain
+  ) |>
+  arrange(StationUID, datetime)
+
+stopifnot(
+  nrow(youbike_weather_hourly) == 86L * 8784L,
+  !anyDuplicated(select(youbike_weather_hourly, StationUID, datetime)),
+  all(is.na(youbike_weather_hourly$status_time) | youbike_weather_hourly$status_time <= youbike_weather_hourly$datetime),
+  all(is.na(youbike_weather_hourly$status_missing_reason) == !is.na(youbike_weather_hourly$AvailableRentBikes)),
+  all(youbike_weather_hourly$AvailableRentBikes >= 0, na.rm = TRUE)
+)
+
+glimpse(youbike_weather_hourly)
+summary(youbike_weather_hourly)
+colSums(is.na(youbike_weather_hourly))
+```
+
+```{r}
+# Values to note for downstream analysis.
+youbike_weather_hourly |>
+  count(ServiceStatus)
+
+# Station-hours with both a usable status and weather.
+youbike_weather_hourly |>
+  summarise(
+    station_hours = n(),
+    with_status = sum(!is.na(AvailableRentBikes)),
+    with_status_and_rain = sum(!is.na(AvailableRentBikes) & !is.na(rain)),
+    with_status_and_temp = sum(!is.na(AvailableRentBikes) & !is.na(Temp))
+  )
+
+# Stations with the most unusable hours.
+youbike_weather_hourly |>
+  group_by(StationUID) |>
+  summarise(missing_status_hours = sum(!is.na(status_missing_reason))) |>
+  arrange(desc(missing_status_hours)) |>
+  head(10)
+
+# Mean available bikes by hour of day and rain, normal-service hours only.
+youbike_weather_hourly |>
+  filter(ServiceStatus == "正常營運", !is.na(rain)) |>
+  group_by(hour = hour(datetime), rain) |>
+  summarise(mean_rent_bikes = round(mean(AvailableRentBikes), 2), .groups = "drop") |>
+  pivot_wider(names_from = rain, values_from = mean_rent_bikes, names_prefix = "rain_")
+```
+
+## 寫出與讀回驗證
+
+```{r}
+outputs <- list(youbike_weather_hourly = youbike_weather_hourly)
+stopifnot(setequal(names(outputs), names(OUTPUTS)))
+
+verification <- list()
+for (key in names(outputs)) {
+  path <- output_paths[[key]]
+  if (file.exists(path)) stop("Output already exists; review it before replacing: ", path)
+  frame <- outputs[[key]]
+  write_parquet(frame, path, compression = "zstd")
+  reread <- read_parquet(path)
+  stopifnot(
+    identical(names(reread), names(frame)),
+    nrow(reread) == nrow(frame),
+    identical(attr(reread$datetime, "tzone"), "Asia/Taipei"),
+    identical(attr(reread$status_time, "tzone"), "Asia/Taipei"),
+    isTRUE(all.equal(as.data.frame(frame), as.data.frame(reread), check.attributes = FALSE))
+  )
+  verification[[key]] <- list(
+    data_path = OUTPUTS[[key]],
+    rows = nrow(reread),
+    size_mb = round(file.size(path) / 1e6, 1),
+    schema = map_chr(reread, \(column) paste(class(column), collapse = "/")),
+    sha256 = sha256_file(path),
+    status = "read-back checks passed"
+  )
+  print(verification[[key]])
+}
+
+# Inputs must be unchanged after processing.
+for (key in names(input_paths)) {
+  stopifnot(identical(sha256_file(input_paths[[key]]), input_fingerprints[[key]]))
+}
+```
+
+## 執行結果
+
+2026-10-18 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）完整執行。以下為該次實際輸出：
+
+- 輸入核對：兩個輸入檔的 SHA-256 皆與預期一致，執行後未改變。
+- 整天無 YouBike 資料的日期 10 天：2024-10-31、11-01–11-03、11-07–11-11、12-10。6 站在年中才出現（最晚為 `TPE500106135`，2024-10-15 起）。
+- 格點：86 站 × 8,784 小時 = 755,424 列，(`StationUID`, `datetime`) 不重複。
+- 狀態可用 691,342 站時（91.5%）；不可用 64,082 站時：
+  - `no record yet` 35,021（新站出現前，以及所有站 2024-01-01 00:00，因為當天第一筆紀錄在 00:01）；
+  - `no-data day` 22,879（10 個無資料日，及其後到該站下一筆紀錄前的時段）；
+  - `stale > 24h` 6,182。
+  - 不可用時數最多的是 7 個年中新站或長期停用站（`TPE500106135` 7,185 小時、`TPE500119059` 3,906 小時等），其餘各站都在 352 小時以下。
+- 實際使用的狀態距 t 的時間：中位數 6.8 分鐘、90% 分位 156 分鐘、99% 分位 611 分鐘、最大 1,440 分鐘（24 小時門檻）。
+- 天氣合併為多對一，未增加列數；天氣缺值依天氣檔逐時傳入（`rain` 缺 91 小時 × 86 站 = 7,826 站時）。
+- 狀態與 `rain` 同時可用 686,479 站時；`ServiceStatus` 為「停止營運」5,947 站時、「正常營運」685,395 站時。
+- 讀回檢查全部通過：欄名、列數、時區與數值皆與寫出前一致。
+- 輸出：`data/processed/youbike_weather_hourly_2024.parquet`，755,424 列 × 15 欄，8.2 MB（zstd）。
+- SHA-256：`c09ab33c7fe724c6479f4cfab3c7933403b045c64b6ecb5e8c29d1b3c52678fe`
