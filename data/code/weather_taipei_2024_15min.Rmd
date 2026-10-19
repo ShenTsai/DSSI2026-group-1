@@ -1,0 +1,524 @@
+---
+title: "weather_taipei_2024_15min"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = FALSE)
+# Global options for knitr go here if needed
+## knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# README
+
+- **Author**: `待確認`
+- **Created At**: `2026-10-19`
+- **Last Modified At**: `2026-10-19`
+
+---
+
+## What does this file do?
+
+- 從 2024 年局屬氣象站天氣觀測資料（每日一檔，共 366 檔）中，只取「臺北」測站（`StationID` = `466920`，臺北市中正區）的溫度 `Temp`、相對濕度 `HUMD` 與日累積雨量 `D24R`，整理成**每 15 分鐘一列**的時間格點，供之後與 YouBike 站點資料以相同格點合併。
+- 本檔是 `data/code/weather_taipei_2024.Rmd`（60 分鐘版）的 15 分鐘版本（組員 2026-10-19 決定改用 15 分鐘，以觀察尖峰時段的借還變化）。測站選擇、缺值代碼與 `D24R` 的處理規則完全沿用 60 分鐘版，只改變格點寬度。
+- 為什麼 15 分鐘可行：臺北站觀測幾乎固定在每小時的 :00、:10、:30、:40（相鄰間隔 10 或 20 分鐘），所以每個 15 分鐘區間 (:45, :00]、(:00, :15]、(:15, :30]、(:30, :45] 正好各含一筆例行觀測（實際分布見下方輸出）。
+- 選用臺北站的理由（組員 2026-10-18 決定）：臺灣大學站（`A0A010`）在 2024-01-19 才出現在資料中，且 2/9–2/16 有一段缺測；臺北站全年 366 天都有紀錄、缺值最少，距臺大約 2.5 km。重疊期間兩站逐時溫度相關係數 0.993（臺大平均低約 0.4 °C），有無降雨的日別一致率約 95%。
+- 時間格點的定義：`datetime` = t 代表區間 (t − 15 分鐘, t]。
+  - `D24R`：區間內**最後一筆有效觀測**（即 t 當下或之前、且不早於 15 分鐘的最新值）；區間內沒有有效觀測時為 `NA`，不用更早的值補，以免同一次雨量變動被計入兩個區間。
+  - `Temp`、`HUMD`：t 當下或之前、**不早於 30 分鐘**的最後一筆有效觀測（組員 2026-10-19 決定）。臺北站偶爾改在 :20、:50 觀測（全年散見，不只一段期間），使部分 15 分鐘區間沒有讀數；若沿用 60 分鐘版「只用區間內讀數」的規則，約 4.2% 的區間溫濕度會缺值。溫濕度變化緩慢，10–20 分鐘前的讀數仍可代表當下。所用讀數距 t 的分鐘數記在 `weather_age_min`，下游可依需要改用更嚴格的門檻。
+  - `rain`（降雨指標）：依組員 2026-10-18 的定義，區間內 `D24R` 有變動為 1，沒有變動為 0。實作上比較「t 之前最後一筆」與「t − 15 分鐘之前最後一筆」的 `D24R`。因為觀測間隔是 10／20 分鐘，每次讀數變動只會歸到一個區間，不會重複計算；例如 :00 的區間實際比較的是 :40 與 :00 兩筆讀數。
+- `D24R` 的特殊處理（依 2026-10-18 對臺北站原始值的檢查）：
+  - `D24R` 是當日 00:00 起的累積雨量；**00:00 那筆仍是前一天的全日總量**，00:10 起才歸零。因此每筆觀測的「累積日」定義為觀測時間減 1 秒所屬的日期；格點區間 (t − 15, t] 永遠落在同一個累積日內。
+  - `-99` 為缺值，轉為 `NA`（臺北站 221 筆）。
+  - `-990` 不是缺值：它出現在當日累積仍為 0 的時段，之後常接著 0.5 mm 以上的雨量，同一累積日內從不出現在正值之後（但有 4 次在之後退回 0），行為與「雨跡」（有降雨但未達 0.5 mm）一致。此解讀來自資料型態，**尚未在 CWA／TDX 文件中確認**。本檔將其記為 `D24R` = 0 並以 `D24R_trace` = TRUE 標示；預設「由 0 變成雨跡」也算 `D24R` 有變動（`TRACE_COUNTS_AS_RAIN`，可改為 `FALSE`）。
+- 不使用風向、風速、氣壓、紫外線、能見度等欄位；不做補值。
+
+---
+
+## What does this file take?
+
+- **Source Data Sets** (one entry per actual file):
+  1. `data/code/weather_raw_manifest.csv`
+     - Input key: `weather_manifest`
+     - Description: 366 個原始檔的精確路徑、位元組數與 SHA-256，一檔一列（2026-10-18 以 `digest` 逐檔計算建立）。原始檔數量多，以此清單逐檔綁定，而不是用 glob 選檔。
+     - Documentation: 本檔
+     - SHA-256: `見下方 EXPECTED_INPUT_SHA256`
+  2. `data/raw/weather_raw/局屬氣象站-天氣觀測報告資料2024-MM-DD.CSV`（2024-01-01 至 2024-12-31，共 366 檔，逐檔列於 manifest）
+     - Input key: `weather_raw`
+     - Description: TDX 局屬氣象站天氣觀測資料，35 欄；每檔含當日所有測站（2024-01-18 前 157 站，01-19 起 221–250 站）。本檔只讀取 `StationID`、`LocationName`、`ObsTime`、`Temp`、`HUMD`、`D24R`。
+     - Documentation: `data/raw/weather_rental_codebook.md`
+     - SHA-256: 逐檔記錄於 `data/code/weather_raw_manifest.csv`，執行時逐檔核對
+
+---
+
+## What does this file output?
+
+- `data/processed/weather_taipei_2024_15min.csv`
+  - Output key: `weather_15min`
+  - Description: 臺北站 2024 年每 15 分鐘天氣，一列為一個 `datetime`（區間 (t − 15 分鐘, t]）。欄位：`datetime`（`Asia/Taipei` 當地時間，`YYYY-MM-DD HH:MM:SS` 文字）、`Temp`（°C）、`HUMD`（0–1 比例，沿用原始單位）、`weather_age_min`（`Temp`／`HUMD` 讀數距 t 的分鐘數）、`D24R`（當日累積雨量 mm，雨跡記為 0）、`D24R_trace`（是否為雨跡）、`rain`（0／1 降雨指標）。
+  - Role: `analysis`
+  - Documentation: pending（processed-data 文件待建立）
+  - Expected schema and row-count rules: 7 欄；35,136 列（2024-01-01 00:00 至 2024-12-31 23:45，每 15 分鐘一列）；`datetime` 不重複且連續；`rain` 只有 0、1、`NA`；`HUMD` 介於 0–1；`weather_age_min` 介於 0–30（不含 30）。
+  - Verification status / SHA-256: 見最後一個 chunk 的實際輸出與下方「執行結果」。
+  - Downstream finding input: `data/code/youbike_weather_15min.Rmd`（同一檔案）
+
+All paths are relative to the project root, not the operating-system root.
+
+```{r}
+library(tidyverse)
+
+find_project_root <- function(start = getwd()) {
+  candidate <- normalizePath(start, winslash = "/", mustWork = TRUE)
+  repeat {
+    if (file.exists(file.path(candidate, "AGENTS.md")) &&
+        dir.exists(file.path(candidate, "templates"))) return(candidate)
+    parent <- dirname(candidate)
+    if (identical(parent, candidate)) stop("Open this notebook within the student project containing AGENTS.md and templates/.")
+    candidate <- parent
+  }
+}
+PROJECT_ROOT <- find_project_root()
+
+project_file <- function(relative_path, area, must_exist = TRUE) {
+  # Exact project-relative paths only; no first-file search or OS-root /data path.
+  parts <- strsplit(relative_path, "/", fixed = TRUE)[[1]]
+  if (grepl("^(/|~|[A-Za-z]:)", relative_path) || ".." %in% parts ||
+      grepl("<", relative_path, fixed = TRUE) ||
+      !startsWith(relative_path, paste0("data/", area, "/"))) {
+    stop("Replace the placeholder with an exact path inside data/", area, "/: ", relative_path)
+  }
+  path <- file.path(PROJECT_ROOT, relative_path)
+  if (must_exist && (!file.exists(path) || dir.exists(path))) stop("Input file not found: ", path)
+  # Resolve existing ancestors to reject a path that leaves the project via a symlink.
+  ancestor <- path
+  while (!file.exists(ancestor)) ancestor <- dirname(ancestor)
+  resolved <- normalizePath(ancestor, winslash = "/", mustWork = TRUE)
+  allowed <- normalizePath(file.path(PROJECT_ROOT, "data", area), winslash = "/", mustWork = TRUE)
+  if (!startsWith(allowed, paste0(PROJECT_ROOT, "/"))) {
+    stop("data/", area, "/ resolves outside the project root.")
+  }
+  if (!identical(resolved, allowed) && !startsWith(resolved, paste0(allowed, "/"))) {
+    stop("Resolved path leaves data/", area, "/: ", relative_path)
+  }
+  path
+}
+
+sha256_file <- function(path) {
+  if (!requireNamespace("digest", quietly = TRUE)) {
+    stop("Cannot verify input identity: digest is unavailable. Use an available SHA-256 implementation before loading data.")
+  }
+  digest::digest(file = path, algo = "sha256", serialize = FALSE)
+}
+
+verify_input_sha256 <- function(path, expected) {
+  # Bind this run to the exact file inspected when the notebook was prepared.
+  if (!is.character(expected) || length(expected) != 1L || is.na(expected) ||
+      !grepl("^[0-9a-fA-F]{64}$", expected)) {
+    stop("Fill the expected SHA-256 from the inspected input before loading data.")
+  }
+  actual <- sha256_file(path)
+  if (!identical(actual, tolower(expected))) stop("Input changed: identify the new version before loading ", basename(path), ".")
+  actual
+}
+```
+
+## 綁定輸入檔
+
+manifest 以固定 SHA-256 綁定；manifest 再逐檔綁定 366 個原始檔。
+
+```{r}
+INPUTS <- c(weather_manifest = "data/code/weather_raw_manifest.csv")
+EXPECTED_INPUT_SHA256 <- c(
+  weather_manifest = "2781feb80cf732535b650d6197efc3382191fe66b78ccdc3a5c733924c2526a9"
+)
+OUTPUTS <- c(weather_15min = "data/processed/weather_taipei_2024_15min.csv")
+
+input_paths <- c(weather_manifest = project_file(INPUTS[["weather_manifest"]], "code"))
+output_paths <- vapply(OUTPUTS, project_file, character(1), area = "processed", must_exist = FALSE)
+stopifnot(!any(output_paths %in% input_paths))
+if (any(file.exists(output_paths))) stop("Review existing outputs before replacing them.")
+
+input_fingerprints <- map_chr(names(input_paths), \(key) {
+  verify_input_sha256(input_paths[[key]], EXPECTED_INPUT_SHA256[[key]])
+}) |>
+  set_names(names(input_paths))
+
+weather_manifest <- read_csv(
+  input_paths[["weather_manifest"]],
+  col_types = cols(file_path = "c", size_bytes = "d", sha256 = "c")
+)
+stopifnot(
+  nrow(problems(weather_manifest)) == 0L,
+  nrow(weather_manifest) == 366L,
+  !anyDuplicated(weather_manifest$file_path),
+  all(grepl("^[0-9a-f]{64}$", weather_manifest$sha256))
+)
+
+# Verify every raw file against the manifest before loading any of them.
+weather_manifest <- weather_manifest |>
+  mutate(
+    abs_path = map_chr(file_path, project_file, area = "raw"),
+    source_date = as.Date(str_extract(file_path, "\\d{4}-\\d{2}-\\d{2}")),
+    actual_sha256 = map_chr(abs_path, sha256_file)
+  )
+
+changed_files <- weather_manifest |>
+  filter(actual_sha256 != sha256)
+if (nrow(changed_files) > 0) {
+  stop("Raw files changed since the manifest was built: ", paste(basename(changed_files$file_path), collapse = ", "))
+}
+stopifnot(
+  !anyNA(weather_manifest$source_date),
+  !anyDuplicated(weather_manifest$source_date)
+)
+cat("All", nrow(weather_manifest), "raw files match their manifest SHA-256.\n")
+cat("Date range:", format(range(weather_manifest$source_date)), "\n")
+```
+
+## 取出臺北站觀測
+
+逐檔以文字讀入需要的欄位，只保留 `StationID` = `466920` 的列，並記錄每檔保留列數。
+
+```{r}
+STATION_ID <- "466920"
+KEEP_COLUMNS <- c("StationID", "LocationName", "ObsTime", "Temp", "HUMD", "D24R")
+
+read_station_rows <- function(abs_path, source_date) {
+  raw_day <- read_csv(
+    abs_path,
+    col_types = cols(.default = col_character()),
+    col_select = all_of(KEEP_COLUMNS),
+    progress = FALSE
+  )
+  stopifnot(nrow(problems(raw_day)) == 0L)
+  raw_day |>
+    filter(StationID == STATION_ID) |>
+    mutate(source_date = source_date)
+}
+
+station_rows_chr <- map2(weather_manifest$abs_path, weather_manifest$source_date, read_station_rows) |>
+  list_rbind()
+
+rows_per_file <- station_rows_chr |>
+  count(source_date)
+stopifnot(nrow(rows_per_file) == nrow(weather_manifest))
+
+station_rows_chr |>
+  count(StationID, LocationName)
+rows_per_file |>
+  summarise(min_rows = min(n), median_rows = median(n), max_rows = max(n))
+cat("Station rows read:", nrow(station_rows_chr), "\n")
+```
+
+## 型別轉換、去除重複與缺值代碼
+
+同一觀測時間可能同時出現在相鄰兩天的檔案中；這些重複列的數值必須完全相同才去除。
+
+```{r}
+NUMBER_PATTERN <- "^-?[0-9]+(\\.[0-9]+)?$"
+stopifnot(
+  all(station_rows_chr$LocationName == "臺北"),
+  all(grepl("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$", station_rows_chr$ObsTime)),
+  all(map_lgl(c("Temp", "HUMD", "D24R"), \(column) all(grepl(NUMBER_PATTERN, station_rows_chr[[column]]))))
+)
+
+duplicate_times <- station_rows_chr |>
+  distinct(ObsTime, Temp, HUMD, D24R) |>
+  count(ObsTime) |>
+  filter(n > 1)
+stopifnot(nrow(duplicate_times) == 0L)
+
+station_obs <- station_rows_chr |>
+  distinct(ObsTime, Temp, HUMD, D24R) |>
+  mutate(
+    ObsTime = ymd_hms(ObsTime, tz = "Asia/Taipei"),
+    across(c(Temp, HUMD, D24R), as.numeric)
+  ) |>
+  arrange(ObsTime)
+cat("Duplicate rows removed:", nrow(station_rows_chr) - nrow(station_obs), "\n")
+
+# Only these negative codes are expected: -99 (missing) everywhere, -990 (trace) in D24R.
+station_obs |>
+  summarise(
+    Temp_minus99 = sum(Temp == -99),
+    HUMD_minus99 = sum(HUMD == -99),
+    D24R_minus99 = sum(D24R == -99),
+    D24R_minus990 = sum(D24R == -990)
+  )
+stopifnot(
+  all(station_obs$Temp > -90 | station_obs$Temp == -99),
+  all(station_obs$HUMD >= 0 | station_obs$HUMD == -99),
+  all(station_obs$D24R >= 0 | station_obs$D24R %in% c(-99, -990))
+)
+
+station_obs <- station_obs |>
+  mutate(
+    Temp = na_if(Temp, -99),
+    HUMD = na_if(HUMD, -99),
+    D24R_trace = D24R == -990,
+    D24R = case_when(
+      D24R == -99 ~ NA_real_,
+      D24R == -990 ~ 0,
+      .default = D24R
+    ),
+    # D24R accumulates from 00:00; the 00:00 reading still holds the previous day's total.
+    accumulation_date = as.Date(ObsTime - seconds(1), tz = "Asia/Taipei")
+  )
+
+glimpse(station_obs)
+summary(station_obs)
+colSums(is.na(station_obs))
+```
+
+```{r}
+# Check the D24R assumptions before using them.
+TRACE_COUNTS_AS_RAIN <- TRUE
+# Orders trace between 0 and 0.5 mm for change detection; not a rainfall amount.
+TRACE_LEVEL <- if (TRACE_COUNTS_AS_RAIN) 0.1 else 0
+
+d24r_obs <- station_obs |>
+  filter(!is.na(D24R)) |>
+  mutate(rain_level = if_else(D24R_trace, TRACE_LEVEL, D24R)) |>
+  group_by(accumulation_date) |>
+  mutate(level_drop = rain_level < lag(rain_level, default = 0)) |>
+  ungroup()
+
+# Within one accumulation day the reading should only stay flat or rise.
+d24r_obs |>
+  filter(level_drop) |>
+  select(ObsTime, D24R, D24R_trace, rain_level)
+
+midnight_check <- station_obs |>
+  filter(!is.na(D24R)) |>
+  mutate(clock = format(ObsTime, "%H:%M")) |>
+  filter(clock %in% c("00:00", "00:10")) |>
+  group_by(clock) |>
+  summarise(readings = n(), positive = sum(D24R > 0))
+midnight_check
+```
+
+## 建立 15 分鐘時間格點
+
+每個 `datetime` = t 代表區間 (t − 15 分鐘, t]。各變數分別取最後一筆有效觀測，因為三個欄位的缺值不一定同時出現。`Temp`、`HUMD` 可回看到 (t − 30 分鐘, t]；`D24R` 只用區間內的讀數。
+
+```{r}
+# Observation minutes: 15-min windows work only if readings fall in every window.
+station_obs |>
+  count(obs_minute = minute(ObsTime))
+station_obs |>
+  count(gap_min = as.numeric(ObsTime - lag(ObsTime), units = "mins")) |>
+  arrange(desc(n)) |>
+  head(5)
+
+WINDOW <- minutes(15)
+
+quarter_grid <- tibble(
+  datetime = seq(
+    ymd_hms("2024-01-01 00:00:00", tz = "Asia/Taipei"),
+    ymd_hms("2024-12-31 23:45:00", tz = "Asia/Taipei"),
+    by = "15 min"
+  )
+) |>
+  mutate(
+    window_start = datetime - WINDOW,
+    accumulation_date = as.Date(datetime - seconds(1), tz = "Asia/Taipei")
+  )
+stopifnot(nrow(quarter_grid) == 366L * 96L)
+
+latest_in_window <- function(grid, obs, value_columns, max_age) {
+  valid_obs <- obs |>
+    filter(if_all(all_of(value_columns), \(value) !is.na(value))) |>
+    select(obs_time = ObsTime, all_of(value_columns))
+  grid |>
+    select(datetime) |>
+    left_join(valid_obs, join_by(closest(datetime >= obs_time))) |>
+    # A reading older than max_age is not used for this period.
+    mutate(
+      usable = obs_time > datetime - max_age,
+      across(all_of(value_columns), \(value) if_else(usable, value, NA)),
+      obs_time = if_else(usable, obs_time, NA)
+    ) |>
+    select(datetime, obs_time, all_of(value_columns))
+}
+
+# Temp and HUMD change slowly: allow a reading up to two windows old (members' choice, 2026-10-19).
+STATE_MAX_AGE <- 2 * WINDOW
+
+temp_15min <- latest_in_window(quarter_grid, station_obs, "Temp", STATE_MAX_AGE) |>
+  rename(temp_time = obs_time)
+humd_15min <- latest_in_window(quarter_grid, station_obs, "HUMD", STATE_MAX_AGE) |>
+  rename(humd_time = obs_time)
+# D24R stays strictly inside the window so each change is counted once.
+d24r_15min <- latest_in_window(quarter_grid, d24r_obs, c("D24R", "D24R_trace", "rain_level"), WINDOW) |>
+  select(-obs_time)
+
+# Temp and HUMD go missing together, so one age column describes both.
+stopifnot(identical(temp_15min$temp_time, humd_15min$humd_time))
+
+# Periods recovered by the longer look-back.
+temp_15min |>
+  summarise(
+    in_window = sum(temp_time > datetime - WINDOW, na.rm = TRUE),
+    from_previous_window = sum(temp_time <= datetime - WINDOW, na.rm = TRUE),
+    missing = sum(is.na(temp_time))
+  )
+```
+
+## 降雨指標
+
+比較 t 之前最後一筆 `D24R`（區間終點）與 t − 15 分鐘之前、同一累積日內最後一筆 `D24R`（區間起點）。
+
+- 同一累積日在 t − 15 分鐘之前沒有讀數時（例如 00:15 的區間），起點是累積日開始時的 0。
+- 終點缺值 → `rain` 為 `NA`。
+- 兩者相同 → 0；不同 → 1。依組員定義，只看「有沒有變動」，所以少數「雨跡退回 0」的下降也算 1（見下方輸出）。
+- 兩者不同但起點讀數早於 t − 30 分鐘（2 × 區間寬度，與 60 分鐘版相同的規則）：變動可能發生在本區間之前，`rain` 為 `NA`，不猜測。
+
+```{r}
+start_readings <- quarter_grid |>
+  select(datetime, window_start, accumulation_date) |>
+  left_join(
+    d24r_obs |>
+      select(accumulation_date, start_time = ObsTime, start_level = rain_level),
+    join_by(accumulation_date, closest(window_start >= start_time))
+  ) |>
+  mutate(
+    # No earlier reading in this accumulation day: start from the 00:00 reset at level 0.
+    start_time = coalesce(start_time, as.POSIXct(accumulation_date, tz = "Asia/Taipei")),
+    start_level = coalesce(start_level, 0)
+  ) |>
+  select(datetime, start_time, start_level)
+
+weather_15min_full <- quarter_grid |>
+  select(datetime) |>
+  left_join(temp_15min, join_by(datetime)) |>
+  left_join(humd_15min, join_by(datetime)) |>
+  left_join(d24r_15min, join_by(datetime)) |>
+  left_join(start_readings, join_by(datetime)) |>
+  mutate(
+    weather_age_min = as.numeric(datetime - temp_time, units = "mins"),
+    rain = case_when(
+      is.na(rain_level) ~ NA_integer_,
+      rain_level == start_level ~ 0L,
+      start_time < datetime - 2 * WINDOW ~ NA_integer_,
+      .default = 1L
+    )
+  )
+
+stopifnot(nrow(weather_15min_full) == nrow(quarter_grid))
+
+# Periods where the reading went down (trace back to 0); the rule still counts them as a change.
+weather_15min_full |>
+  filter(rain_level < start_level) |>
+  select(datetime, start_time, start_level, D24R, D24R_trace, rain)
+
+weather_15min <- weather_15min_full |>
+  select(datetime, Temp, HUMD, weather_age_min, D24R, D24R_trace, rain)
+
+glimpse(weather_15min)
+summary(weather_15min)
+colSums(is.na(weather_15min))
+```
+
+```{r}
+# Values to note for downstream analysis.
+weather_15min |>
+  count(rain)
+
+# Periods flagged only because D24R went from 0 to trace.
+weather_15min_full |>
+  filter(rain == 1L, D24R == 0, D24R_trace) |>
+  nrow()
+
+# Periods with rain = NA because D24R moved but the earlier reading is too old.
+weather_15min_full |>
+  filter(!is.na(rain_level), is.na(rain)) |>
+  nrow()
+
+weather_15min |>
+  mutate(month = format(datetime, "%Y-%m")) |>
+  group_by(month) |>
+  summarise(
+    periods = n(),
+    rain_periods = sum(rain == 1L, na.rm = TRUE),
+    rain_na = sum(is.na(rain)),
+    temp_na = sum(is.na(Temp)),
+    mean_temp = round(mean(Temp, na.rm = TRUE), 1)
+  )
+
+# Longest stretches of periods without a temperature reading.
+weather_15min |>
+  mutate(temp_missing = is.na(Temp), run = consecutive_id(temp_missing)) |>
+  filter(temp_missing) |>
+  group_by(run) |>
+  summarise(first_period = min(datetime), periods = n()) |>
+  arrange(desc(periods)) |>
+  head(5)
+```
+
+## 寫出與讀回驗證
+
+`datetime` 以 `Asia/Taipei` 當地時間的文字寫出（`write_csv()` 會把時間轉成 UTC，容易誤讀）；讀回時以同一時區解析。
+
+```{r}
+outputs <- list(
+  weather_15min = weather_15min |>
+    mutate(datetime = format(datetime, "%Y-%m-%d %H:%M:%S"))
+)
+stopifnot(setequal(names(outputs), names(OUTPUTS)))
+
+verification <- list()
+for (key in names(outputs)) {
+  path <- output_paths[[key]]
+  if (file.exists(path)) stop("Output already exists; review it before replacing: ", path)
+  frame <- outputs[[key]]
+  write_csv(frame, path, na = "")
+  reread <- read_csv(
+    path,
+    col_types = cols(
+      datetime = col_datetime(format = "%Y-%m-%d %H:%M:%S"),
+      Temp = "d", HUMD = "d", weather_age_min = "d", D24R = "d", D24R_trace = "l", rain = "i"
+    ),
+    locale = locale(tz = "Asia/Taipei"),
+    na = ""
+  )
+  stopifnot(
+    nrow(problems(reread)) == 0L,
+    identical(names(reread), names(weather_15min)),
+    nrow(reread) == 366L * 96L,
+    !anyDuplicated(reread$datetime),
+    all(diff(as.numeric(reread$datetime)) == 900),
+    all(reread$datetime == weather_15min$datetime),
+    all(reread$rain %in% c(0L, 1L, NA)),
+    all(between(reread$HUMD, 0, 1) | is.na(reread$HUMD)),
+    all((reread$weather_age_min >= 0 & reread$weather_age_min < 30) | is.na(reread$weather_age_min)),
+    isTRUE(all.equal(as.data.frame(weather_15min), as.data.frame(reread), check.attributes = FALSE))
+  )
+  verification[[key]] <- list(
+    data_path = OUTPUTS[[key]],
+    rows = nrow(reread),
+    size_kb = round(file.size(path) / 1e3, 1),
+    schema = map_chr(reread, \(column) paste(class(column), collapse = "/")),
+    sha256 = sha256_file(path),
+    status = "read-back checks passed"
+  )
+  print(verification[[key]])
+}
+
+# Inputs must be unchanged after processing.
+for (key in names(input_paths)) {
+  stopifnot(identical(sha256_file(input_paths[[key]]), input_fingerprints[[key]]))
+}
+```
+
+## 執行結果
+
+2026-10-19 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）完整執行。以下為該次實際輸出：
+
+- 輸入核對：manifest 與 366 個原始檔全部與 SHA-256 一致；臺北站 34,778 筆觀測，缺值代碼與 `D24R` 假設核對結果與 60 分鐘版相同。
+- 觀測時間分布：分鐘為 :00／:10／:30／:40 者 8,666／8,155／8,642／8,169 筆，:20／:50 者 615／531 筆；相鄰間隔 10 分鐘 17,379 次、20 分鐘 17,239 次，30 分鐘以上 160 次。
+- 輸出 35,136 列（366 天 × 96 個 15 分鐘區間）。
+- `Temp`／`HUMD`：33,671 個區間用區間內讀數，1,189 個區間用前一區間（15–30 分鐘前）的讀數，276 個區間缺值（0.8%）。`Temp` 與 `HUMD` 全年同時缺值，所以一個 `weather_age_min` 即可描述兩者。最長連續缺溫度為 2024-05-07 09:00 起 31 個區間（約 7.75 小時，與 60 分鐘版同一段）。
+- `D24R`、`D24R_trace`：1,631 個區間缺值（區間內沒有讀數）。
+- `rain`：1 = 1,527 個區間（4.3%）、0 = 31,967、`NA` = 1,642（1,631 個區間內無讀數，11 個因前一筆讀數早於 t − 30 分鐘而無法判斷）。其中 160 個區間只因 `D24R` 由 0 變成雨跡而記為 1；4 個區間因雨跡退回 0 而記為 1。月別降雨區間數 56（12 月）至 241（10 月）。
+- 讀回檢查全部通過：欄名、列數、`datetime` 每 15 分鐘連續不重複、`rain` 只有 0／1／`NA`、`HUMD` 介於 0–1、`weather_age_min` 介於 0–30，數值與寫出前一致；輸入檔執行後未改變。
+- 輸出：`data/processed/weather_taipei_2024_15min.csv`，35,136 列 × 7 欄，1,459.4 KB。
+- SHA-256：`6a12d0545fa5dba474ee085d08536b58d74ab012a5cf55347cabb7b48bf8d9d7`
