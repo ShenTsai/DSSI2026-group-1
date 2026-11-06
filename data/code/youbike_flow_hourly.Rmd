@@ -12,7 +12,7 @@ knitr::opts_chunk$set(error = FALSE)
 
 - **Author**: `蔡睿燊`
 - **Created At**: `2026-10-18`
-- **Last Modified At**: `2026-10-18`
+- **Last Modified At**: `2026-11-07`
 
 ---
 
@@ -21,7 +21,7 @@ knitr::opts_chunk$set(error = FALSE)
 - 建立 2024 年**日曆表**（一日一列）：
   - `weekday`：上班日 = 1。週一至週五為 1，但國定假日與臺北市颱風停班停課日為 0；補班的週六為 1（組員 2026-10-18 確認）。
   - `semester`：臺大上課學期內 = 1。112-2 為 2024-02-19 至 2024-06-09，113-1 為 2024-09-02 至 2024-12-20（組員 2026-10-18 提供），其餘（寒暑假）為 0。
-- 把研究範圍內 86 站的分鐘級狀態更新，彙整成**站點 × 整點**的借還流量，並合併到既有的站點 × 整點天氣 panel 與日曆：
+- 把研究範圍內 107 站的分鐘級狀態更新，彙整成**站點 × 整點**的借還流量，並合併到既有的站點 × 整點天氣 panel 與日曆：
   - 每一筆更新相對於同站前一筆的可借車數變化稱為一個「步」（step）。來源約每 2 分鐘更新一次（中位數 1.9 分鐘）。
   - **調度判定**（組員 2026-10-18 決定改用分鐘級判定，門檻由 AI 提議）：單一步的 |變化| ≥ 10 輛視為調度車補車或移車。全年單一步 |變化| 的 99.9% 分位數為 9 輛，一般騎乘在兩分鐘內很難造成 10 輛以上的變化。原本以「一小時淨變化 ≥ 25」判定的方式會把大量真實尖峰需求當成調度：這些小時中位數有 33 次更新、單步變化中位數只有 6 輛，大多數變化由許多小步累積而成。
   - 每個時段 (t − 1 小時, t] 的流量由該區間內的步加總而成；該區間的淨變化等於 t 與 t − 1 兩個整點快照的差（下方有 assertion 核對）。
@@ -34,14 +34,14 @@ knitr::opts_chunk$set(error = FALSE)
 - **Source Data Sets** (one entry per actual file):
   1. `data/processed/youbike_rental_in_field_2024.parquet`
      - Input key: `rental_in_field`
-     - Description: 研究範圍內 86 站的 2024 年狀態更新紀錄，一列為 `StationUID` × `SrcUpdateTime`，8,112,511 列 × 11 欄。
+     - Description: 研究範圍內 107 站的 2024 年狀態更新紀錄，一列為 `StationUID` × `SrcUpdateTime`，9,775,967 列 × 11 欄。
      - Documentation: `data/processed/youbike_rental_in_field_2024_doc.Rmd`
-     - SHA-256: `ef6160f4c50aa0b951419304f29a6eb572b65b6027cf027b0d2b107525981e4e`
+     - SHA-256: `6589d6215e8e4ee10c90d6fdfded07ccc2b8704147c7ab69129202f05225ea88`
   2. `data/processed/youbike_weather_hourly_2024.parquet`
      - Input key: `youbike_weather_hourly`
-     - Description: 站點 × 整點狀態快照與臺北站天氣，86 × 8,784 = 755,424 列 × 15 欄。
+     - Description: 站點 × 整點狀態快照與臺北站天氣，107 × 8,784 = 939,888 列 × 15 欄。
      - Documentation: `data/code/youbike_weather_hourly.Rmd`（processed-data 文件待建立）
-     - SHA-256: `c09ab33c7fe724c6479f4cfab3c7933403b045c64b6ecb5e8c29d1b3c52678fe`
+     - SHA-256: `2b35d579fabdbee26444b80a628383ab5fcbdc55c6c4e14f0cc13fab81242b51`
 - 國定假日、補班日與颱風假日期：依行政院人事行政總處 113 年辦公日曆表與組員確認的清單手動輸入於下方程式碼（2026-10-18）。學期日期由組員提供。
 
 ---
@@ -67,7 +67,7 @@ knitr::opts_chunk$set(error = FALSE)
     - `period_date`、`hour_of_day`：時段 (t − 1, t] 起點的日期與小時；`weekday`、`semester`：依 `period_date` 合併日曆。
   - Role: `analysis`
   - Documentation: 本檔（processed-data 文件待建立）
-  - Expected schema and row-count rules: 755,424 列 × 28 欄；(`StationUID`, `datetime`) 不重複；流量欄位只在兩個快照都可用時有值，此時 `net_flow` = 步的加總、`rider_net_flow` + `dispatch_in` − `dispatch_out` = `net_flow`。
+  - Expected schema and row-count rules: 939,888 列 × 28 欄；(`StationUID`, `datetime`) 不重複；流量欄位只在兩個快照都可用時有值，此時 `net_flow` = 步的加總、`rider_net_flow` + `dispatch_in` − `dispatch_out` = `net_flow`。
   - Verification status / SHA-256: 見最後一個 chunk 的實際輸出與下方「執行結果」。
   - Downstream finding input: `finding/youbike_eda.Rmd`
 
@@ -140,8 +140,8 @@ INPUTS <- c(
   youbike_weather_hourly = "data/processed/youbike_weather_hourly_2024.parquet"
 )
 EXPECTED_INPUT_SHA256 <- c(
-  rental_in_field = "ef6160f4c50aa0b951419304f29a6eb572b65b6027cf027b0d2b107525981e4e",
-  youbike_weather_hourly = "c09ab33c7fe724c6479f4cfab3c7933403b045c64b6ecb5e8c29d1b3c52678fe"
+  rental_in_field = "6589d6215e8e4ee10c90d6fdfded07ccc2b8704147c7ab69129202f05225ea88",
+  youbike_weather_hourly = "2b35d579fabdbee26444b80a628383ab5fcbdc55c6c4e14f0cc13fab81242b51"
 )
 OUTPUTS <- c(
   calendar = "data/processed/calendar_2024.csv",
@@ -162,9 +162,9 @@ rental_in_field <- read_parquet(input_paths[["rental_in_field"]])
 youbike_weather_hourly <- read_parquet(input_paths[["youbike_weather_hourly"]])
 
 stopifnot(
-  nrow(rental_in_field) == 8112511L,
+  nrow(rental_in_field) == 9775967L,
   !anyDuplicated(select(rental_in_field, StationUID, SrcUpdateTime)),
-  nrow(youbike_weather_hourly) == 86L * 8784L,
+  nrow(youbike_weather_hourly) == 107L * 8784L,
   !anyDuplicated(select(youbike_weather_hourly, StationUID, datetime)),
   identical(attr(youbike_weather_hourly$datetime, "tzone"), "Asia/Taipei"),
   identical(attr(rental_in_field$SrcUpdateTime, "tzone"), "Asia/Taipei")
@@ -302,7 +302,7 @@ youbike_flow_hourly <- youbike_weather_hourly |>
   left_join(select(calendar, date, weekday, semester), join_by(period_date == date), relationship = "many-to-one", unmatched = "drop")
 
 stopifnot(
-  nrow(youbike_flow_hourly) == 86L * 8784L,
+  nrow(youbike_flow_hourly) == 107L * 8784L,
   !anyDuplicated(select(youbike_flow_hourly, StationUID, datetime)),
   # Steps inside (t - 1h, t] add up to the difference between the two snapshots.
   with(youbike_flow_hourly, all(is.na(net_flow) | step_sum == net_flow)),
@@ -398,15 +398,15 @@ for (key in names(input_paths)) {
 
 ## 執行結果
 
-2026-10-18 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）完整執行。以下為該次實際輸出：
+2026-11-07 研究範圍由 86 站擴為 107 站後，以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）完整執行，取代 86 站版本（SHA-256 `7f9f4c2a…`，755,424 列）。`calendar_2024.csv` 重新寫出後與舊版逐位元組相同。以下為該次實際輸出：
 
 - 輸入核對：兩個輸入檔的 SHA-256 皆與預期一致，執行後未改變。
 - 日曆：366 天；上班日 244 天（其中上課學期 150 天）、非上班日 122 天；學期內 222 天。非週末休假日 19 天（含颱風假 6 天）、補班日 1 天（2024-02-17）。
-- 步：8,112,425 個；相鄰更新間隔中位數 1.9 分鐘；單步 |變化| 99.9% 分位數 9 輛，≥ 10 輛的步占 0.082%、≥ 20 輛占 0.0082%。
-- 合併：755,424 列 × 28 欄，(`StationUID`, `datetime`) 不重複；所有兩個快照都可用的站時，步的加總都等於 `net_flow`，`rider_net_flow` + `dispatch_in` − `dispatch_out` 也都等於 `net_flow`。流量欄位缺 64,593 站時（與上游快照缺值一致）；`weekday`／`semester` 只在 2024-01-01 00:00 的 86 列（描述 2023-12-31 23 時）為 `NA`。
-- 兩個整點皆「正常營運」的 684,702 站時中：5,537 站時含調度步，調度共 85,975 輛次，占全部 |淨流量| 的 3.5%；其中 364 站時同一小時既有 ≥ 10 的增加也有 ≥ 10 的減少（可能是調度，也可能是資料短暫跳動）。含調度的站時最多在 12 時、15–18 時。調度量最多的站為 `TPE500101022`（20,385 輛次）與 `TPE500101181`（11,968 輛次），即捷運公館站 2、3 號出口。
-- 原本 |淨流量| ≥ 25 的 7,193 站時中只有 1,330 個（18%）含調度步；扣除調度後仍有 6,649 站時 |騎乘淨流量| ≥ 25，支持「這些大幅變化多數是真實尖峰需求」。
+- 步：9,775,860 個；相鄰更新間隔中位數 1.9 分鐘；單步 |變化| 99.9% 分位數 9 輛，≥ 10 輛的步占 0.073%、≥ 20 輛占 0.0075%。
+- 合併：939,888 列 × 28 欄，(`StationUID`, `datetime`) 不重複；所有兩個快照都可用的站時，步的加總都等於 `net_flow`，`rider_net_flow` + `dispatch_in` − `dispatch_out` 也都等於 `net_flow`。原 86 站的列與舊版完全相同。流量欄位缺 86,204 站時（與上游快照缺值一致）；`weekday`／`semester` 只在 2024-01-01 00:00 的 107 列（描述 2023-12-31 23 時）為 `NA`。
+- 兩個整點皆「正常營運」的 846,209 站時中：5,954 站時含調度步，調度共 91,879 輛次，占全部 |淨流量| 的 3.5%；其中 371 站時同一小時既有 ≥ 10 的增加也有 ≥ 10 的減少（可能是調度，也可能是資料短暫跳動）。含調度的站時最多在 12 時、15–18 時。調度量最多的站為 `TPE500101022`（20,385 輛次）與 `TPE500101181`（11,968 輛次），即捷運公館站 2、3 號出口。
+- 原本 |淨流量| ≥ 25 的 7,515 站時中只有 1,373 個（18%）含調度步；扣除調度後仍有 6,938 站時 |騎乘淨流量| ≥ 25，支持「這些大幅變化多數是真實尖峰需求」。
 - 讀回檢查全部通過。
 - 輸出：
   - `data/processed/calendar_2024.csv`：366 列 × 5 欄，SHA-256 `f95e69ce018015334456d049a2cb9492ed2a7be6a689b1abb17d8adfcd20a115`
-  - `data/processed/youbike_flow_hourly_2024.parquet`：755,424 列 × 28 欄，10.65 MB（zstd），SHA-256 `7f9f4c2a17ce02f7b92902471e0accb7eef5e3447e0aafd5b195b3b2d98330d0`
+  - `data/processed/youbike_flow_hourly_2024.parquet`：939,888 列 × 28 欄，13.19 MB（zstd），SHA-256 `98602b08f71f89fbfeb27d95edfad13c477a01149cae13a6d68c89d131f27ad3`

@@ -12,13 +12,13 @@ knitr::opts_chunk$set(error = FALSE)
 
 - **Author**: `待確認`
 - **Created At**: `2026-10-17`
-- **Last Modified At**: `2026-10-18`
+- **Last Modified At**: `2026-11-07`
 
 ---
 
 ## What does this file do?
 
-- 從 2024 年臺北市 YouBike 站點剩餘數量歷史資料（每日一檔，共 366 檔）中，只保留位於研究範圍（臺大／公館一帶多邊形）內的站點紀錄。研究範圍站點清單來自 `data/processed/stations_in_field.csv`（由 `data/code/filter_stations_in_field.R` 產生，86 個 `StationUID`；2026-10-18 起使用擴大後的多邊形，納入周邊捷運站與宿舍，含臺大男一舍、男六舍、男八舍與基隆長興路口）。
+- 從 2024 年臺北市 YouBike 站點剩餘數量歷史資料（每日一檔，共 366 檔）中，只保留位於研究範圍（臺大／公館一帶多邊形）內的站點紀錄。研究範圍站點清單來自 `data/processed/stations_in_field.csv`（由 `data/code/filter_stations_in_field.R` 產生，107 個 `StationUID`；2026-10-18 起使用擴大後的多邊形，納入周邊捷運站與宿舍，含臺大男一舍、男六舍、男八舍與基隆長興路口；2026-11-07 另依缺漏站點清單人工補入多邊形外 21 站）。
 - 觀察單位不變：站點 × 來源更新時間（`StationUID` × `SrcUpdateTime`），每筆為一次站點狀態更新。本檔只做篩選、型別轉換與一項重新編碼（見下），不做時間彙總、不補值。
 - 型別轉換：車數欄位轉為整數；`SrcUpdateTime`、`UpdateTime` 由含 `+08:00` 的 ISO 8601 字串轉為 `Asia/Taipei` 時區的時間；`StationUID`、`StationID`、`ServiceType` 保留原始文字。新增 `source_date`，記錄該列來自哪一天的原始檔。
 - 重新編碼：原始 `ServiceStatus` 除「正常營運」外，另有未列於 OAS 規格的代碼 `2`。依組員 2026-10-17 對照資料網站的確認（網站上服務狀態只有「停止營運」與「正常營運」），將 `2` 改為「停止營運」；輸出的 `ServiceStatus` 只有這兩個值。原始值仍保留在 `data/raw/` 的原始檔中。
@@ -32,9 +32,9 @@ knitr::opts_chunk$set(error = FALSE)
 - **Source Data Sets** (one entry per actual file):
   1. `data/processed/stations_in_field.csv`
      - Input key: `stations_in_field`
-     - Description: 研究範圍內的站點位置，一列為一個 `StationUID` × 位置（3 站年中移位，故 89 列、86 站）；本檔只使用 `StationUID`。
+     - Description: 研究範圍內的站點位置，一列為一個 `StationUID` × 位置（4 站年中移位，故 111 列、107 站）；本檔只使用 `StationUID`。
      - Documentation: `data/code/filter_stations_in_field.R`（processed-data 文件待建立）
-     - SHA-256: `3e613849e756966366e4cf598d4f4fc027867ca6597cf29e85d899a1c60e8e59`
+     - SHA-256: `83919dc097be4e7f82594deff97d782d2fdaf1de52538b08b9a23d764d6aabee`
   2. `data/code/youbike_rental_raw_manifest.csv`
      - Input key: `rental_manifest`
      - Description: 366 個原始檔的精確路徑、位元組數與 SHA-256，一檔一列。原始檔數量多，以此清單逐檔綁定，而不是用 glob 選檔。
@@ -52,7 +52,7 @@ knitr::opts_chunk$set(error = FALSE)
 
 - `data/processed/youbike_rental_in_field_2024.parquet`
   - Output key: `rental_in_field`
-  - Description: 研究範圍內 86 站的 2024 年站點狀態更新紀錄，原始 10 欄加上 `source_date`。
+  - Description: 研究範圍內 107 站的 2024 年站點狀態更新紀錄，原始 10 欄加上 `source_date`。
   - Role: `analysis`
   - Documentation: `data/processed/youbike_rental_in_field_2024_doc.Rmd`
   - Expected schema and row-count rules: 11 欄；`StationUID` 全部屬於站點清單；(`StationUID`, `SrcUpdateTime`) 不重複；無缺值；`SrcUpdateTime` 的日期等於 `source_date`；列數等於各原始檔篩選後列數之和。
@@ -136,7 +136,7 @@ INPUTS <- c(
   rental_manifest = "data/code/youbike_rental_raw_manifest.csv"
 )
 EXPECTED_INPUT_SHA256 <- c(
-  stations_in_field = "3e613849e756966366e4cf598d4f4fc027867ca6597cf29e85d899a1c60e8e59",
+  stations_in_field = "83919dc097be4e7f82594deff97d782d2fdaf1de52538b08b9a23d764d6aabee",
   rental_manifest = "1b02e3f7d1afb7c488daf5c7049761d6e5c4aaf15dc64bc7736c4966eec5ea46"
 )
 OUTPUTS <- c(rental_in_field = "data/processed/youbike_rental_in_field_2024.parquet")
@@ -348,13 +348,13 @@ for (key in names(input_paths)) {
 
 ## 執行結果
 
-2026-10-18 更新研究範圍多邊形（`stations_in_field.csv` 由 78 站改為 86 站：新增 11 站、移除 3 站；新增第 13 個頂點以納入臺大男一舍、男六舍與基隆長興路口）後，以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）重新完整執行，取代舊多邊形的版本（SHA-256 `9dddd818…`，7,225,134 列；同日 80 站的中間版本為 `0316faf3…`；更早未重新編碼的版本為 `6d631d33…`）。以下為該次實際輸出：
+2026-11-07 依 `data/temp/可能缺漏站點清單.csv` 在 `stations_in_field.csv` 人工補入 21 站（多邊形未變，由 86 站改為 107 站）後，以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）重新完整執行，取代 86 站版本（SHA-256 `ef6160f4…`，8,112,511 列；更早版本為 78 站的 `9dddd818…`，7,225,134 列）。以下為該次實際輸出：
 
-- 輸入核對：站點清單 86 站（89 列）；366 個原始檔全部與 manifest 的 SHA-256 一致。
+- 輸入核對：站點清單 107 站（111 列）；366 個原始檔全部與 manifest 的 SHA-256 一致。
 - 空檔：6 檔為 0 bytes（2024-10-31、11-02、11-07、11-08、11-09、11-10），4 檔只有 1–2 列且都不屬於研究範圍（11-01、11-03、11-11、12-10）。共 356 天有資料、10 天沒有，**這 10 天在輸出中完全缺漏**，下游若做日別或時間序列分析需留意。
-- 篩選：原始 111,802,383 列 → 保留 8,112,511 列；86 站全部出現。
+- 篩選：原始 111,802,383 列 → 保留 9,775,967 列；107 站全部出現。原 86 站的 8,112,511 列與舊版完全相同。
 - 檢查全部通過：無缺值、(`StationUID`, `SrcUpdateTime`) 無重複、時間日期與檔名日期一致、車數皆為非負整數。
-- 每日列數差異大：中位數 21,028 列／天（最少 22、最多 113,241），2024-01-01 至 01-13 約為平常的 5 倍，1 月共 1,559,796 列。來源似乎在 1 月上旬改變了更新頻率，以列數加總或平均時須先統一時間間隔。
-- **`ServiceStatus` 重新編碼**：原始值 8,092,327 列為「正常營運」、20,184 列為 `2`（不在 OAS 規格的 0／1 代碼中）。依組員確認，`2` 改為「停止營運」；輸出中「停止營運」20,184 列、「正常營運」8,092,327 列，筆數與重新編碼前一致。`ServiceType` 全為 `YouBike2`。
-- 輸出：`data/processed/youbike_rental_in_field_2024.parquet`，8,112,511 列 × 11 欄，48.7 MB（zstd），讀回後欄名、列數、時區與數值皆與寫出前一致。
-- SHA-256：`ef6160f4c50aa0b951419304f29a6eb572b65b6027cf027b0d2b107525981e4e`
+- 每日列數差異大：中位數 25,134 列／天（最少 39、最多 138,722），2024-01-01 至 01-13 約為平常的 5 倍，1 月共 1,904,209 列。來源似乎在 1 月上旬改變了更新頻率，以列數加總或平均時須先統一時間間隔。
+- **`ServiceStatus` 重新編碼**：原始值 9,755,305 列為「正常營運」、20,662 列為 `2`（不在 OAS 規格的 0／1 代碼中）。依組員確認，`2` 改為「停止營運」；輸出中「停止營運」20,662 列、「正常營運」9,755,305 列，筆數與重新編碼前一致。`ServiceType` 全為 `YouBike2`。
+- 輸出：`data/processed/youbike_rental_in_field_2024.parquet`，9,775,967 列 × 11 欄，57.2 MB（zstd），讀回後欄名、列數、時區與數值皆與寫出前一致。
+- SHA-256：`6589d6215e8e4ee10c90d6fdfded07ccc2b8704147c7ab69129202f05225ea88`

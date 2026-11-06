@@ -12,13 +12,13 @@ knitr::opts_chunk$set(error = FALSE)
 
 - **Author**: `待確認`
 - **Created At**: `2026-10-19`
-- **Last Modified At**: `2026-10-19`
+- **Last Modified At**: `2026-11-07`
 
 ---
 
 ## What does this file do?
 
-- 把研究範圍內 86 個 YouBike 站點的狀態更新紀錄，整理成**站點 × 15 分鐘**的平衡 panel（2024-01-01 00:00 至 2024-12-31 23:45，每站 35,136 個時點），再以 `datetime` 合併臺北站每 15 分鐘天氣。
+- 把研究範圍內 107 個 YouBike 站點的狀態更新紀錄，整理成**站點 × 15 分鐘**的平衡 panel（2024-01-01 00:00 至 2024-12-31 23:45，每站 35,136 個時點），再以 `datetime` 合併臺北站每 15 分鐘天氣。
 - 本檔是 `data/code/youbike_weather_hourly.Rmd`（整點版）的 15 分鐘版本（組員 2026-10-19 決定改用 15 分鐘，因為尖峰時段一小時內的借還變化很大）。狀態的取法與缺值規則完全沿用整點版，只把時間格點改為每 15 分鐘。來源約每 2 分鐘更新一次，足以支援 15 分鐘的格點。
 - 站點狀態的取法（組員 2026-10-18 決定）：每個時點 t 取該站在 t 當下或之前**最後一筆**狀態更新（`SrcUpdateTime` ≤ t）。來源大致只在狀態變動時才有紀錄，所以兩筆之間沿用前一筆是合理的。
 - 不沿用舊狀態的情況（狀態欄位設為 `NA`，原因記在 `status_missing_reason`）：
@@ -35,9 +35,9 @@ knitr::opts_chunk$set(error = FALSE)
 - **Source Data Sets** (one entry per actual file):
   1. `data/processed/youbike_rental_in_field_2024.parquet`
      - Input key: `rental_in_field`
-     - Description: 研究範圍內 86 站的 2024 年站點狀態更新紀錄，一列為 `StationUID` × `SrcUpdateTime`，8,112,511 列 × 11 欄。
+     - Description: 研究範圍內 107 站的 2024 年站點狀態更新紀錄，一列為 `StationUID` × `SrcUpdateTime`，9,775,967 列 × 11 欄。
      - Documentation: `data/processed/youbike_rental_in_field_2024_doc.Rmd`
-     - SHA-256: `ef6160f4c50aa0b951419304f29a6eb572b65b6027cf027b0d2b107525981e4e`
+     - SHA-256: `6589d6215e8e4ee10c90d6fdfded07ccc2b8704147c7ab69129202f05225ea88`
   2. `data/processed/weather_taipei_2024_15min.csv`
      - Input key: `weather_15min`
      - Description: 臺北站（466920）2024 年每 15 分鐘天氣，一列為一個 `datetime`，35,136 列 × 7 欄。
@@ -53,7 +53,7 @@ knitr::opts_chunk$set(error = FALSE)
   - Description: 站點 × 15 分鐘 panel。欄位：`StationUID`、`datetime`；站點狀態 `ServiceStatus`、`AvailableRentBikes`、`AvailableReturnBikes`、`GeneralBikes`、`ElectricBikes`；`status_time`（所用紀錄的 `SrcUpdateTime`）、`status_age_min`（t − `status_time`，分鐘）、`status_missing_reason`；天氣 `Temp`、`HUMD`、`weather_age_min`、`D24R`、`D24R_trace`、`rain`。
   - Role: `analysis`
   - Documentation: pending（processed-data 文件待建立）
-  - Expected schema and row-count rules: 16 欄；86 × 35,136 = 3,021,696 列；(`StationUID`, `datetime`) 不重複；`status_time` ≤ `datetime`；狀態欄位只在 `status_missing_reason` 為 `NA` 時有值；天氣欄位與天氣檔同一 `datetime` 的值相同。
+  - Expected schema and row-count rules: 16 欄；107 × 35,136 = 3,759,552 列；(`StationUID`, `datetime`) 不重複；`status_time` ≤ `datetime`；狀態欄位只在 `status_missing_reason` 為 `NA` 時有值；天氣欄位與天氣檔同一 `datetime` 的值相同。
   - Verification status / SHA-256: 見最後一個 chunk 的實際輸出與下方「執行結果」。
   - Downstream finding input: `data/processed/youbike_weather_15min_2024.parquet` (same exact file)
 
@@ -130,7 +130,7 @@ INPUTS <- c(
   weather_15min = "data/processed/weather_taipei_2024_15min.csv"
 )
 EXPECTED_INPUT_SHA256 <- c(
-  rental_in_field = "ef6160f4c50aa0b951419304f29a6eb572b65b6027cf027b0d2b107525981e4e",
+  rental_in_field = "6589d6215e8e4ee10c90d6fdfded07ccc2b8704147c7ab69129202f05225ea88",
   weather_15min = "6a12d0545fa5dba474ee085d08536b58d74ab012a5cf55347cabb7b48bf8d9d7"
 )
 OUTPUTS <- c(youbike_weather_15min = "data/processed/youbike_weather_15min_2024.parquet")
@@ -158,7 +158,7 @@ weather_15min <- read_csv(
 )
 
 stopifnot(
-  nrow(rental_in_field) == 8112511L,
+  nrow(rental_in_field) == 9775967L,
   identical(attr(rental_in_field$SrcUpdateTime, "tzone"), "Asia/Taipei"),
   !anyDuplicated(select(rental_in_field, StationUID, SrcUpdateTime)),
   nrow(problems(weather_15min)) == 0L,
@@ -204,7 +204,7 @@ station_quarter_grid <- expand_grid(
   StationUID = sort(unique(rental_in_field$StationUID)),
   datetime = weather_15min$datetime
 )
-stopifnot(nrow(station_quarter_grid) == 86L * 35136L)
+stopifnot(nrow(station_quarter_grid) == 107L * 35136L)
 
 status_updates <- rental_in_field |>
   select(StationUID, status_time = SrcUpdateTime, all_of(STATUS_COLUMNS))
@@ -264,7 +264,7 @@ youbike_weather_15min <- station_15min |>
   arrange(StationUID, datetime)
 
 stopifnot(
-  nrow(youbike_weather_15min) == 86L * 35136L,
+  nrow(youbike_weather_15min) == 107L * 35136L,
   !anyDuplicated(select(youbike_weather_15min, StationUID, datetime)),
   all(is.na(youbike_weather_15min$status_time) | youbike_weather_15min$status_time <= youbike_weather_15min$datetime),
   all(is.na(youbike_weather_15min$status_missing_reason) == !is.na(youbike_weather_15min$AvailableRentBikes)),
@@ -344,19 +344,19 @@ for (key in names(input_paths)) {
 
 ## 執行結果
 
-2026-10-19 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）完整執行。以下為該次實際輸出：
+2026-11-07 研究範圍由 86 站擴為 107 站後，以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）完整執行，取代 86 站版本（SHA-256 `415097ee…`，3,021,696 列）。以下為該次實際輸出：
 
 - 輸入核對：兩個輸入檔的 SHA-256 皆與預期一致，執行後未改變。整天無 YouBike 資料的 10 天與年中新站，與整點版相同。
-- 格點：86 站 × 35,136 個 15 分鐘時點 = 3,021,696 列，(`StationUID`, `datetime`) 不重複。
-- 狀態可用 2,765,475 站點時段（91.5%）；不可用 256,221：
-  - `no record yet` 139,838；
-  - `no-data day` 91,704；
-  - `stale > 24h` 24,679。
-  - 不可用時段最多的是 7 個年中新站或長期停用站（`TPE500106135` 28,741、`TPE500101240` 26,444 等），其餘各站都在 1,409 以下。
-- 實際使用的狀態距 t 的時間：中位數 7.65 分鐘、90% 分位 156 分鐘、99% 分位 609 分鐘、最大 1,440 分鐘（24 小時門檻）。
-- 天氣合併為多對一，未增加列數。`Temp`／`HUMD` 缺 23,736 站點時段（276 個時段 × 86 站）；`rain` 缺 141,212（1,642 × 86）。
-- 狀態與 `rain` 同時可用 2,643,478 站點時段，狀態與 `Temp` 同時可用 2,744,427；`ServiceStatus` 為「停止營運」24,217、「正常營運」2,741,258。
-- 與整點版一致性：另以讀回的兩個 parquet 比對，本檔每個 :00 時點的 `ServiceStatus`、`AvailableRentBikes`、`status_time`、`status_missing_reason` 與 `data/processed/youbike_weather_hourly_2024.parquet` 的 755,424 列完全相同。
+- 格點：107 站 × 35,136 個 15 分鐘時點 = 3,759,552 列，(`StationUID`, `datetime`) 不重複。原 86 站的列與舊版完全相同。
+- 狀態可用 3,417,374 站點時段（90.9%）；不可用 342,178：
+  - `no record yet` 202,354；
+  - `no-data day` 112,916；
+  - `stale > 24h` 26,908。
+  - 不可用時段最多的是 10 個年中新站或長期停用站（`TPE500101250` 33,345、`TPE500106135` 28,741、`TPE500101240` 26,444 等），其餘各站都在 1,409 以下。
+- 實際使用的狀態距 t 的時間：中位數 7.63 分鐘、90% 分位 147 分鐘、99% 分位 596 分鐘、最大 1,440 分鐘（24 小時門檻）。
+- 天氣合併為多對一，未增加列數。`Temp`／`HUMD` 缺 29,532 站點時段（276 個時段 × 107 站）；`rain` 缺 175,694（1,642 × 107）。
+- 狀態與 `rain` 同時可用 3,266,867 站點時段，狀態與 `Temp` 同時可用 3,391,354；`ServiceStatus` 為「停止營運」29,523、「正常營運」3,387,851。
+- 與整點版一致性：另以讀回的兩個 parquet 比對，本檔每個 :00 時點的 `ServiceStatus`、`AvailableRentBikes`、`status_time`、`status_missing_reason` 與 `data/processed/youbike_weather_hourly_2024.parquet` 的 939,888 列完全相同。
 - 讀回檢查全部通過：欄名、列數、時區與數值皆與寫出前一致。
-- 輸出：`data/processed/youbike_weather_15min_2024.parquet`，3,021,696 列 × 16 欄，32.8 MB（zstd）。
-- SHA-256：`415097ee3a5dd8c457b1370aac26f4098186b6fe0d4239be4fff7093ecbd6efb`
+- 輸出：`data/processed/youbike_weather_15min_2024.parquet`，3,759,552 列 × 16 欄，40.7 MB（zstd）。
+- SHA-256：`4a5dc43c597ff2f9aa72fb21bc5d751bf3183f4e7d5026ab130996b9a5885325`
