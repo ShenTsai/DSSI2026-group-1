@@ -1,4 +1,5 @@
-# Filter YouBike stations located inside the study field polygon.
+# Filter YouBike stations located inside the study field polygon, plus the
+# manually added stations listed in manual_stations.
 # Input:  data/raw/youbike_historical_station_raw/*.CSV (daily station snapshots, 2024)
 # Output: data/processed/stations_in_field.csv
 #
@@ -34,6 +35,35 @@ field_polygon <- field_vertices |>
   st_polygon() |>
   st_sfc(crs = 4326)
 
+# Stations outside the polygon that the team added by hand (2026-11-07), from
+# the gap list data/temp/可能缺漏站點清單.csv. Selected by StationUID, so the
+# polygon itself is unchanged. 臺大人文館 and 羅斯福路三段283巷 are also on that
+# list but appear in no 2024 snapshot, so they cannot be added.
+manual_stations <- tribble(
+  ~StationUID,    ~station_name,
+  "TPE500119005", "臺大水源舍區A棟",
+  "TPE500119009", "臺大水源舍區B棟",
+  "TPE500119096", "臺大水源舍區C棟",
+  "TPE500119007", "臺大水源修齊會館",
+  "TPE500119006", "臺大卓越研究大樓",
+  "TPE500119008", "臺大檔案展示館",
+  "TPE500101031", "臺大男七舍前",
+  "TPE500101029", "臺大環研大樓",
+  "TPE500101035", "臺大土木研究大樓前",
+  "TPE500101028", "臺大醫學院附設癌醫中心",
+  "TPE500101006", "復興南路二段280號前",
+  "TPE500101007", "復興南路二段340巷口",
+  "TPE500101185", "辛亥新生路口西北側",
+  "TPE500101166", "捷運科技大樓站(台北教育大學)",
+  "TPE500101234", "和平東路二段90巷",
+  "TPE500101250", "國立臺北教育大學創意館",
+  "TPE500101018", "溫州公園",
+  "TPE500101094", "辛亥泰順街口",
+  "TPE500101012", "辛亥路一段30號前",
+  "TPE500101016", "羅斯福路三段245號前",
+  "TPE500101014", "羅斯福路三段311號前"
+)
+
 # Read all non-empty daily snapshots
 station_files <- list.files(
   "data/raw/youbike_historical_station_raw",
@@ -66,11 +96,22 @@ station_positions <- station_snapshots |>
 station_positions_sf <- station_positions |>
   st_as_sf(coords = c("PositionLon", "PositionLat"), crs = 4326, remove = FALSE)
 
+# Every manual UID must exist in the snapshots under the expected name
+manual_check <- station_positions |>
+  filter(StationUID %in% manual_stations$StationUID) |>
+  distinct(StationUID, StationNameZh_tw) |>
+  mutate(station_name = str_remove(StationNameZh_tw, "^YouBike2\\.0_")) |>
+  inner_join(manual_stations, by = c("StationUID", "station_name"))
+stopifnot(setequal(manual_check$StationUID, manual_stations$StationUID))
+
 stations_in_field <- station_positions_sf |>
-  mutate(in_field = lengths(st_within(geometry, field_polygon)) > 0) |>
+  mutate(
+    in_polygon = lengths(st_within(geometry, field_polygon)) > 0,
+    in_field = in_polygon | StationUID %in% manual_stations$StationUID
+  ) |>
   st_drop_geometry() |>
   filter(in_field) |>
-  select(-in_field) |>
+  select(-in_polygon, -in_field) |>
   arrange(StationID)
 
 write_csv(stations_in_field, "data/processed/stations_in_field.csv")
