@@ -1,6 +1,6 @@
 # Filter YouBike stations located inside the study field polygon, plus the
 # manually added stations listed in manual_stations.
-# Input:  data/raw/youbike_historical_station_raw/*.CSV (daily station snapshots, 2024)
+# Input:  data/raw/youbike_historical_station_raw/*.CSV (daily station snapshots, 2024-2025)
 # Output: data/processed/stations_in_field.csv
 #
 # sf is used for the point-in-polygon test (st_within) because it handles
@@ -37,8 +37,10 @@ field_polygon <- field_vertices |>
 
 # Stations outside the polygon that the team added by hand (2026-11-07), from
 # the gap list data/temp/可能缺漏站點清單.csv. Selected by StationUID, so the
-# polygon itself is unchanged. 臺大人文館 and 羅斯福路三段283巷 are also on that
-# list but appear in no 2024 snapshot, so they cannot be added.
+# polygon itself is unchanged. Two stations on that list first appear in the
+# 2025 snapshots (added 2026-11-08): 臺大人文館 (opened 2025-02-04) lies inside
+# the polygon and needs no manual entry; 羅斯福路三段283巷 (opened 2025-10-10)
+# lies outside it and is listed below.
 manual_stations <- tribble(
   ~StationUID,    ~station_name,
   "TPE500119005", "臺大水源舍區A棟",
@@ -61,7 +63,8 @@ manual_stations <- tribble(
   "TPE500101094", "辛亥泰順街口",
   "TPE500101012", "辛亥路一段30號前",
   "TPE500101016", "羅斯福路三段245號前",
-  "TPE500101014", "羅斯福路三段311號前"
+  "TPE500101014", "羅斯福路三段311號前",
+  "TPE500101265", "羅斯福路三段283巷"
 )
 
 # Read all non-empty daily snapshots

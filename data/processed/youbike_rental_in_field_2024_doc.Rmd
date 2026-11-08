@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
 # Data Description
-- Author: 待確認
+- Author: 蔡睿燊
 - Date first created: 20261017
 - Background: 2024 年臺北市 YouBike 2.0 站點即時車位歷史紀錄（交通部 TDX 平臺），只保留研究範圍（臺大／公館一帶多邊形）及人工補入的 107 個站點（2026-10-18 起使用擴大後的多邊形，納入周邊捷運站與宿舍；2026-11-07 另依缺漏站點清單補入多邊形外 21 站）。本組研究臺大周遭站點的車輛數最適化調度，這份資料提供各站可借車數與可還空位的時間序列。
 - Unit of observation: 站點 × 來源更新時間（`StationUID` × `SrcUpdateTime`），一列為一次站點狀態更新；兩者組合唯一。
