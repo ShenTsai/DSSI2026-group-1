@@ -1,0 +1,373 @@
+---
+title: "weather_taipei_combine_2024_2025"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# README
+
+- **Author**: `蔡睿燊`
+- **Created At**: `2026-11-08`
+- **Last Modified At**: `2026-11-08`
+
+---
+
+## What does this file do?
+
+- 把已處理好的臺北站（`StationID` = `466920`）天氣資料，依時間解析度各自把 2024 與 2025 兩年**直向合併（row bind）**成一個 Parquet 檔：
+  - 逐時：`weather_taipei_2024_hourly.csv` + `weather_taipei_2025_hourly.csv` → `weather_taipei_hourly_2024_2025.parquet`
+  - 每 15 分鐘：`weather_taipei_2024_15min.csv` + `weather_taipei_2025_15min.csv` → `weather_taipei_15min_2024_2025.parquet`
+- 觀測單位不變：逐時檔一列為一個整點 `datetime`（區間 (t − 60 分鐘, t]），15 分鐘檔一列為一個 15 分鐘 `datetime`（區間 (t − 15 分鐘, t]）。各欄位的定義與處理規則（測站選擇、`-99`／`-990` 規則、回看門檻、`rain` 定義）完全沿用四個上游 Rmd，本檔**不重新計算、不補值、不改任何數值**。
+- 本檔唯一的轉換：
+  - `datetime` 從 CSV 的文字（`YYYY-MM-DD HH:MM:SS`，當地時間）轉為 `Asia/Taipei` 時區的時間戳記（Parquet `timestamp`），讓 R（`POSIXct`）與 Python（`pandas` tz-aware `datetime64`）讀入時直接是時間型態。
+  - 欄位型態固定：`Temp`、`HUMD`、`D24R` 為 double，`weather_age_min`、`rain` 為 integer，`D24R_trace` 為 logical。
+  - 依 `datetime` 排序。
+- 合併前後檢查：兩年欄名一致、`datetime` 不重疊、合併後兩年連續不中斷，且每一列數值與原 CSV 完全相同。
+- 跨年邊界：上游各年獨立處理，2025-01-01 00:00 這一格的區間 (2024-12-31 23:00 或 23:45, 00:00] 屬於 2024-12-31 的雨量累積日，但 2025 年程式只讀 2025 年原始檔，`rain` 的起點會預設為 0。若 2024-12-31 有降雨，這一格可能被誤標為 1；下方檢查 2024 年最後一格與 2025 年第一格的 `D24R`，確認此次合併沒有這個問題。
+- 原本四個 CSV 保留不動（`PROJECT-PROPOSAL.md` 仍有登記）；Parquet 是之後分析建議讀取的合併版本。
+
+---
+
+## What does this file take?
+
+- **Source Data Sets** (one entry per actual file):
+  1. `data/processed/weather_taipei_2024_hourly.csv`
+     - Input key: `hourly_2024`
+     - Description: 臺北站 2024 年逐時天氣，8,784 列 × 6 欄（`datetime`、`Temp`、`HUMD`、`D24R`、`D24R_trace`、`rain`）。
+     - Documentation: 產生程式 [`data/code/weather_taipei_2024.Rmd`](weather_taipei_2024.Rmd)（獨立 processed 文件未建立，由本次合併檔的文件取代）
+     - SHA-256: `fe3af4b782fe20a91b602b218150bc33a7bf3436963dca4f8b217d2a7a659fa3`
+  2. `data/processed/weather_taipei_2025_hourly.csv`
+     - Input key: `hourly_2025`
+     - Description: 臺北站 2025 年逐時天氣，8,760 列 × 6 欄，欄位同上。
+     - Documentation: 產生程式 [`data/code/weather_taipei_2025.Rmd`](weather_taipei_2025.Rmd)
+     - SHA-256: `48775131d3b4d7af851a2a438327dd23bf0d8947b8ef7f514bd0ce9ad2116619`
+  3. `data/processed/weather_taipei_2024_15min.csv`
+     - Input key: `min15_2024`
+     - Description: 臺北站 2024 年每 15 分鐘天氣，35,136 列 × 7 欄（多一欄 `weather_age_min`）。
+     - Documentation: 產生程式 [`data/code/weather_taipei_2024_15min.Rmd`](weather_taipei_2024_15min.Rmd)
+     - SHA-256: `6a12d0545fa5dba474ee085d08536b58d74ab012a5cf55347cabb7b48bf8d9d7`
+  4. `data/processed/weather_taipei_2025_15min.csv`
+     - Input key: `min15_2025`
+     - Description: 臺北站 2025 年每 15 分鐘天氣，35,040 列 × 7 欄，欄位同上。
+     - Documentation: 產生程式 [`data/code/weather_taipei_2025_15min.Rmd`](weather_taipei_2025_15min.Rmd)
+     - SHA-256: `76637e5ee8bbc22748afff69b967e5a4874b2a8701c002452b071c50945b3882`
+
+---
+
+## What does this file output?
+
+- `data/processed/weather/weather_taipei_hourly_2024_2025.parquet`
+  - Output key: `hourly`
+  - Description: 臺北站 2024–2025 逐時天氣，一列一個整點 `datetime`。
+  - Role: `analysis`
+  - Documentation: [`data/processed/weather/weather_taipei_hourly_2024_2025_doc.Rmd`](../processed/weather/weather_taipei_hourly_2024_2025_doc.Rmd)
+  - Expected schema and row-count rules: 6 欄，欄序同輸入；17,544 列（8,784 + 8,760；2024-01-01 00:00 至 2025-12-31 23:00 每小時一列）；`datetime` 不重複且連續。
+  - Verification status / SHA-256: 見最後一個 chunk 的實際輸出與下方「執行結果」。
+  - Downstream finding input: `data/processed/weather/weather_taipei_hourly_2024_2025.parquet`（同一檔案）
+- `data/processed/weather/weather_taipei_15min_2024_2025.parquet`
+  - Output key: `min15`
+  - Description: 臺北站 2024–2025 每 15 分鐘天氣，一列一個 15 分鐘 `datetime`。
+  - Role: `analysis`
+  - Documentation: [`data/processed/weather/weather_taipei_15min_2024_2025_doc.Rmd`](../processed/weather/weather_taipei_15min_2024_2025_doc.Rmd)
+  - Expected schema and row-count rules: 7 欄，欄序同輸入；70,176 列（35,136 + 35,040；2024-01-01 00:00 至 2025-12-31 23:45 每 15 分鐘一列）；`datetime` 不重複且連續。
+  - Verification status / SHA-256: 見最後一個 chunk 的實際輸出與下方「執行結果」。
+  - Downstream finding input: `data/processed/weather/weather_taipei_15min_2024_2025.parquet`（同一檔案）
+
+All paths are relative to the project root, not the operating-system root.
+讀寫 Parquet 使用 `arrow` 套件（tidyverse 沒有 Parquet 讀寫功能；專案內 YouBike 資料也已用 Parquet 儲存）。
+
+```{r}
+library(tidyverse)
+library(arrow)
+
+find_project_root <- function(start = getwd()) {
+  candidate <- normalizePath(start, winslash = "/", mustWork = TRUE)
+  repeat {
+    if (file.exists(file.path(candidate, "AGENTS.md")) &&
+        dir.exists(file.path(candidate, "templates"))) return(candidate)
+    parent <- dirname(candidate)
+    if (identical(parent, candidate)) stop("Open this notebook within the student project containing AGENTS.md and templates/.")
+    candidate <- parent
+  }
+}
+PROJECT_ROOT <- find_project_root()
+
+project_file <- function(relative_path, area, must_exist = TRUE) {
+  # Exact project-relative paths only; no first-file search or OS-root /data path.
+  parts <- strsplit(relative_path, "/", fixed = TRUE)[[1]]
+  if (grepl("^(/|~|[A-Za-z]:)", relative_path) || ".." %in% parts ||
+      grepl("<", relative_path, fixed = TRUE) ||
+      !startsWith(relative_path, paste0("data/", area, "/"))) {
+    stop("Replace the placeholder with an exact path inside data/", area, "/: ", relative_path)
+  }
+  path <- file.path(PROJECT_ROOT, relative_path)
+  if (must_exist && (!file.exists(path) || dir.exists(path))) stop("Input file not found: ", path)
+  # Resolve existing ancestors to reject a path that leaves the project via a symlink.
+  ancestor <- path
+  while (!file.exists(ancestor)) ancestor <- dirname(ancestor)
+  resolved <- normalizePath(ancestor, winslash = "/", mustWork = TRUE)
+  allowed <- normalizePath(file.path(PROJECT_ROOT, "data", area), winslash = "/", mustWork = TRUE)
+  if (!startsWith(allowed, paste0(PROJECT_ROOT, "/"))) {
+    stop("data/", area, "/ resolves outside the project root.")
+  }
+  if (!identical(resolved, allowed) && !startsWith(resolved, paste0(allowed, "/"))) {
+    stop("Resolved path leaves data/", area, "/: ", relative_path)
+  }
+  path
+}
+
+sha256_file <- function(path) {
+  if (!requireNamespace("digest", quietly = TRUE)) {
+    stop("Cannot verify input identity: digest is unavailable. Use an available SHA-256 implementation before loading data.")
+  }
+  digest::digest(file = path, algo = "sha256", serialize = FALSE)
+}
+
+verify_input_sha256 <- function(path, expected) {
+  # Bind this run to the exact file inspected when the notebook was prepared.
+  if (!is.character(expected) || length(expected) != 1L || is.na(expected) ||
+      !grepl("^[0-9a-fA-F]{64}$", expected)) {
+    stop("Fill the expected SHA-256 from the inspected input before loading data.")
+  }
+  actual <- sha256_file(path)
+  if (!identical(actual, tolower(expected))) stop("Input changed: identify the new version before loading ", basename(path), ".")
+  actual
+}
+
+```
+
+```{r}
+INPUTS <- c(
+  hourly_2024 = "data/processed/weather_taipei_2024_hourly.csv",
+  hourly_2025 = "data/processed/weather_taipei_2025_hourly.csv",
+  min15_2024 = "data/processed/weather_taipei_2024_15min.csv",
+  min15_2025 = "data/processed/weather_taipei_2025_15min.csv"
+)
+EXPECTED_INPUT_SHA256 <- c(
+  hourly_2024 = "fe3af4b782fe20a91b602b218150bc33a7bf3436963dca4f8b217d2a7a659fa3",
+  hourly_2025 = "48775131d3b4d7af851a2a438327dd23bf0d8947b8ef7f514bd0ce9ad2116619",
+  min15_2024 = "6a12d0545fa5dba474ee085d08536b58d74ab012a5cf55347cabb7b48bf8d9d7",
+  min15_2025 = "76637e5ee8bbc22748afff69b967e5a4874b2a8701c002452b071c50945b3882"
+)
+EXPECTED_INPUT_ROWS <- c(hourly_2024 = 8784L, hourly_2025 = 8760L, min15_2024 = 35136L, min15_2025 = 35040L)
+OUTPUTS <- c(
+  hourly = "data/processed/weather/weather_taipei_hourly_2024_2025.parquet",
+  min15 = "data/processed/weather/weather_taipei_15min_2024_2025.parquet"
+)
+# Set to TRUE only when intentionally regenerating these outputs.
+ALLOW_REPLACE_OUTPUTS <- FALSE
+
+# Read datetime as text first so the local-time strings are parsed explicitly in Asia/Taipei.
+HOURLY_COLUMNS <- c("datetime", "Temp", "HUMD", "D24R", "D24R_trace", "rain")
+MIN15_COLUMNS <- c("datetime", "Temp", "HUMD", "weather_age_min", "D24R", "D24R_trace", "rain")
+hourly_col_types <- cols(
+  datetime = col_character(),
+  Temp = col_double(),
+  HUMD = col_double(),
+  D24R = col_double(),
+  D24R_trace = col_logical(),
+  rain = col_integer()
+)
+min15_col_types <- cols(
+  datetime = col_character(),
+  Temp = col_double(),
+  HUMD = col_double(),
+  weather_age_min = col_integer(),
+  D24R = col_double(),
+  D24R_trace = col_logical(),
+  rain = col_integer()
+)
+INPUT_COL_TYPES <- list(
+  hourly_2024 = hourly_col_types,
+  hourly_2025 = hourly_col_types,
+  min15_2024 = min15_col_types,
+  min15_2025 = min15_col_types
+)
+
+read_weather_csv <- function(path, col_types) {
+  result <- read_csv(path, col_types = col_types, na = c("", "NA"))
+  stopifnot(nrow(problems(result)) == 0L)
+  result
+}
+
+input_paths <- vapply(INPUTS, project_file, character(1), area = "processed")
+output_paths <- vapply(OUTPUTS, project_file, character(1), area = "processed", must_exist = FALSE)
+stopifnot(!anyDuplicated(output_paths), !any(output_paths %in% input_paths))
+if (any(file.exists(output_paths)) && !ALLOW_REPLACE_OUTPUTS) {
+  stop("Review existing outputs before replacing them (set ALLOW_REPLACE_OUTPUTS <- TRUE to regenerate).")
+}
+stopifnot(setequal(names(EXPECTED_INPUT_SHA256), names(INPUTS)))
+input_fingerprints <- vapply(names(input_paths), function(key) {
+  verify_input_sha256(input_paths[[key]], EXPECTED_INPUT_SHA256[[key]])
+}, character(1))
+
+inputs <- map(set_names(names(INPUTS)), function(key) {
+  read_weather_csv(input_paths[[key]], INPUT_COL_TYPES[[key]])
+})
+for (key in names(inputs)) {
+  print(list(input = key, data_path = INPUTS[[key]], rows = nrow(inputs[[key]]),
+             schema = vapply(inputs[[key]], function(x) paste(class(x), collapse = "/"), character(1)),
+             sha256 = input_fingerprints[[key]]))
+}
+```
+
+## 讀入後的結構檢查
+
+```{r}
+for (key in names(inputs)) {
+  expected_columns <- if (startsWith(key, "hourly")) HOURLY_COLUMNS else MIN15_COLUMNS
+  stopifnot(
+    identical(names(inputs[[key]]), expected_columns),
+    nrow(inputs[[key]]) == EXPECTED_INPUT_ROWS[[key]],
+    !anyNA(inputs[[key]]$datetime),
+    all(str_detect(inputs[[key]]$datetime, "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$"))
+  )
+}
+"四個輸入的欄名、列數與 datetime 文字格式皆符合預期"
+```
+
+## 合併
+
+`datetime` 文字以 `Asia/Taipei` 解析（臺灣無日光節約時間，每個當地時間都唯一對應一個時點），再把同解析度的兩年直向合併並排序。
+
+```{r}
+parse_weather_time <- function(df) {
+  df |>
+    mutate(datetime = ymd_hms(datetime, tz = "Asia/Taipei"))
+}
+
+combine_years <- function(df_2024, df_2025) {
+  stopifnot(identical(names(df_2024), names(df_2025)))
+  bind_rows(
+    parse_weather_time(df_2024),
+    parse_weather_time(df_2025)
+  ) |>
+    arrange(datetime)
+}
+
+weather_hourly <- combine_years(inputs$hourly_2024, inputs$hourly_2025)
+weather_15min <- combine_years(inputs$min15_2024, inputs$min15_2025)
+
+outputs <- list(hourly = weather_hourly, min15 = weather_15min)
+walk(outputs, glimpse)
+```
+
+## 合併檢查
+
+```{r}
+check_full_grid <- function(df, step, first, last) {
+  expected_grid <- seq(
+    ymd_hms(first, tz = "Asia/Taipei"),
+    ymd_hms(last, tz = "Asia/Taipei"),
+    by = step
+  )
+  stopifnot(
+    !anyNA(df$datetime),
+    !anyDuplicated(df$datetime),
+    nrow(df) == length(expected_grid),
+    all(df$datetime == expected_grid)
+  )
+  tibble(rows = nrow(df), first = min(df$datetime), last = max(df$datetime))
+}
+
+# Every combined row must equal the corresponding input row (datetime compared as text).
+check_values_unchanged <- function(combined, df_2024, df_2025) {
+  original <- bind_rows(df_2024, df_2025)
+  as_text <- combined |>
+    mutate(datetime = format(datetime, "%Y-%m-%d %H:%M:%S", tz = "Asia/Taipei"))
+  stopifnot(isTRUE(all.equal(as.data.frame(as_text), as.data.frame(original), check.attributes = FALSE)))
+  "數值與原 CSV 完全相同"
+}
+
+bind_rows(
+  check_full_grid(weather_hourly, "hour", "2024-01-01 00:00:00", "2025-12-31 23:00:00") |>
+    mutate(output = "hourly", .before = 1),
+  check_full_grid(weather_15min, "15 min", "2024-01-01 00:00:00", "2025-12-31 23:45:00") |>
+    mutate(output = "min15", .before = 1)
+)
+check_values_unchanged(weather_hourly, inputs$hourly_2024, inputs$hourly_2025)
+check_values_unchanged(weather_15min, inputs$min15_2024, inputs$min15_2025)
+```
+
+### 跨年邊界
+
+2025 年第一格的 `rain` 由 2025 年程式以起點 0 計算。若 2024-12-31 最後的累積雨量 `D24R` 為 0 且 2025-01-01 00:00 的 `D24R` 也為 0，這一格的 `rain` = 0 與跨年連續計算的結果一致。
+
+```{r}
+boundary_rows <- bind_rows(
+  weather_hourly |>
+    filter(between(datetime, ymd_hms("2024-12-31 22:00:00", tz = "Asia/Taipei"), ymd_hms("2025-01-01 01:00:00", tz = "Asia/Taipei"))) |>
+    mutate(output = "hourly", .before = 1),
+  weather_15min |>
+    filter(between(datetime, ymd_hms("2024-12-31 23:30:00", tz = "Asia/Taipei"), ymd_hms("2025-01-01 00:15:00", tz = "Asia/Taipei"))) |>
+    mutate(output = "min15", .before = 1)
+)
+boundary_rows
+
+first_2025 <- boundary_rows |>
+  filter(datetime == ymd_hms("2025-01-01 00:00:00", tz = "Asia/Taipei"))
+last_2024 <- boundary_rows |>
+  filter(datetime < ymd_hms("2025-01-01 00:00:00", tz = "Asia/Taipei")) |>
+  group_by(output) |>
+  slice_max(datetime, n = 1) |>
+  ungroup()
+stopifnot(
+  all(last_2024$D24R == 0),
+  all(first_2025$D24R == 0),
+  all(first_2025$rain == 0L)
+)
+"跨年邊界：2024-12-31 尾端與 2025-01-01 00:00 的 D24R 皆為 0，第一格 rain = 0 不受分年處理影響"
+```
+
+## 寫出與讀回
+
+```{r}
+# Run only after the transformation chunk has produced and checked `outputs`.
+stopifnot(setequal(names(outputs), names(OUTPUTS)))
+for (key in names(outputs)) {
+  stopifnot(is.data.frame(outputs[[key]]), !anyDuplicated(names(outputs[[key]])))
+}
+verification <- list()
+for (key in names(outputs)) {
+  path <- output_paths[[key]]
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  if (file.exists(path) && !ALLOW_REPLACE_OUTPUTS) stop("Output already exists; review it before replacing: ", path)
+  frame <- outputs[[key]]
+  write_parquet(frame, path)
+  reread <- read_parquet(path)
+  stopifnot(
+    identical(names(reread), names(frame)),
+    nrow(reread) == nrow(frame),
+    identical(attr(reread$datetime, "tzone"), "Asia/Taipei"),
+    identical(vapply(reread, function(x) class(x)[1], character(1)), vapply(frame, function(x) class(x)[1], character(1)))
+  )
+  stopifnot(isTRUE(all.equal(as.data.frame(frame), as.data.frame(reread), check.attributes = FALSE)))
+  fingerprint <- sha256_file(path)
+  verification[[key]] <- list(data_path = OUTPUTS[[key]], rows = nrow(reread),
+                              schema = vapply(reread, function(x) paste(class(x), collapse = "/"), character(1)),
+                              parquet_schema = read_parquet(path, as_data_frame = FALSE)$schema$ToString(),
+                              sha256 = fingerprint,
+                              status = "read-back checks passed")
+  print(verification[[key]])
+}
+for (key in names(input_paths)) {
+  stopifnot(identical(sha256_file(input_paths[[key]]), input_fingerprints[[key]]))
+}
+```
+
+## 執行結果
+
+2026-11-08 在乾淨 R 程序以 `knitr::knit()` 執行（輸出至暫存 Markdown 檢查），結果如下：
+
+- 四個輸入 CSV 的 SHA-256 皆與 `PROJECT-PROPOSAL.md` 登記值相同；欄名、列數（8,784／8,760／35,136／35,040）與 `datetime` 文字格式皆符合預期，讀檔無 parsing problem。
+- 逐時檔：17,544 列 × 6 欄，2024-01-01 00:00 至 2025-12-31 23:00 每小時一列，`datetime` 不重複且連續；每列數值與原 CSV 完全相同。
+- 15 分鐘檔：70,176 列 × 7 欄，2024-01-01 00:00 至 2025-12-31 23:45 每 15 分鐘一列，`datetime` 不重複且連續；每列數值與原 CSV 完全相同。
+- 跨年邊界：2024-12-31 最後一格與 2025-01-01 00:00 的 `D24R` 皆為 0，2025 年第一格 `rain` = 0，分年處理沒有造成誤標。
+- 寫出後重新讀回：欄名、列數、欄位型態（`datetime` 為 `timestamp[us, tz=Asia/Taipei]`、`weather_age_min`／`rain` 為 int32、`D24R_trace` 為 bool）與數值皆與寫出前一致；刪除輸出後重跑一次，兩檔 SHA-256 不變。
+  - `weather_taipei_hourly_2024_2025.parquet`：`3d673f5e42f30ece48d514556d8c3c22848533b41c9a44ae543a20243a8e7000`
+  - `weather_taipei_15min_2024_2025.parquet`：`574c2d55229125faff1e6ba305187be1900dab1475b4f059a441c7d7aa8574fa`
+- 輸入檔在執行前後 SHA-256 不變。
+- 再次執行前須把 `ALLOW_REPLACE_OUTPUTS` 改為 `TRUE`，否則會因輸出已存在而停止。

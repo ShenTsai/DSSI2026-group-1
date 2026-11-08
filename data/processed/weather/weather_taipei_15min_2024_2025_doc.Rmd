@@ -1,0 +1,244 @@
+---
+title: "weather_taipei_15min_2024_2025_doc"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Data Description
+- Author: 蔡睿燊
+- Date first created: 20261108（本 Parquet 檔建立日；兩年 CSV 分別於 2026-10-18、2026-11-08 產生）
+- Background: 中央氣象署局屬氣象站「臺北」測站（`StationID` = `466920`，臺北市中正區，距臺大約 2.5 km）2024–2025 年每 15 分鐘的溫度、相對濕度與降雨資料，原始資料取自 TDX 局屬氣象站天氣觀測報告（每日一檔、每 10 分鐘左右一筆觀測）。兩年各自由上游 Rmd 整理成 15 分鐘格點後，在本次直向合併為單一檔案，供與 YouBike 站點 × 15 分鐘資料以 `datetime` 合併。改用 15 分鐘格點是組員 2026-10-19 的決定（觀察尖峰時段變化）；臺北站觀測多在每小時 :00、:10、:30、:40，每個 15 分鐘區間通常含一筆例行觀測。選用臺北站而非臺灣大學站（`A0A010`）的理由見 [`weather_taipei_2024.Rmd`](../../code/weather_taipei_2024.Rmd)（組員 2026-10-18 決定）。
+- Unit of observation: 一個 15 分鐘時間格點 `datetime` = t，代表區間 (t − 15 分鐘, t]（臺北站單一測站，故每列即一個 15 分鐘時段）。
+- Sample period: 2024-01-01 00:00 至 2025-12-31 23:45（`Asia/Taipei` 當地時間），共 70,176 個時段（2024 年 35,136、2025 年 35,040）。
+- Known issues:
+    - 缺值不補。`Temp`／`HUMD`／`weather_age_min` 缺 1,065 個時段（2024 年 276、2025 年 789）；`D24R`／`D24R_trace` 缺 3,691 個時段；`rain` 缺 3,744 個時段（2024 年 1,642、2025 年 2,102，約 5.3%）。2025 年缺值明顯較多。
+    - `D24R` 只用區間內讀數（避免同一次雨量變動被計入兩個區間），觀測間隔較大（例如 2024-01-01 開頭約每 30 分鐘一筆，:15、:45 時段即為 `NA`）或改在 :20、:50 觀測時，部分區間沒有讀數，因此 `D24R`／`rain` 的缺值比溫濕度多很多。依上游執行結果，`rain` 的 `NA` 絕大多數來自區間內無讀數（2024 年 1,631／1,642、2025 年 2,060／2,102）。
+    - `Temp`／`HUMD` 可回看 30 分鐘（組員 2026-10-19 決定），並非嚴格只用區間內讀數；需要更嚴格門檻時可用 `weather_age_min` 篩選。
+    - `D24R` = `-990` 被解讀為「雨跡」（有降雨但未達 0.5 mm），記為 `D24R` = 0 並以 `D24R_trace` = TRUE 標示。這是依資料型態的推論，**尚未在 CWA／TDX 文件中確認**。
+    - `rain` 依組員定義只看區間內 `D24R` 有無變動：「由 0 變成雨跡」算 1，少數「雨跡退回 0」的下降也算 1；`D24R` 有變動但區間起點讀數早於 t − 30 分鐘時記為 `NA`。
+    - 2024、2025 年各自處理。2025-01-01 00:00 的區間屬於 2024-12-31 的雨量累積日，2025 年程式以起點 0 計算；已在 [合併程式](../../code/weather_taipei_combine_2024_2025.Rmd) 確認該處 `D24R` 前後皆為 0，`rain` = 0 無誤。
+    - 單一測站讀數，不代表研究範圍內每個 YouBike 站點的局部天氣。
+- Definition for each variable:
+    - `datetime`：時間格點 t（`timestamp[us, tz=Asia/Taipei]`；R 讀入為 `POSIXct`，Python／pandas 為 tz-aware `datetime64`）。代表區間 (t − 15 分鐘, t]，唯一鍵。
+    - `Temp`：氣溫（°C），t 當下或之前、不早於 30 分鐘的最後一筆有效觀測；無則 `NA`。
+    - `HUMD`：相對濕度，沿用原始 0–1 比例（例如 0.62 = 62%），t 當下或之前、不早於 30 分鐘的最後一筆有效觀測；無則 `NA`。
+    - `weather_age_min`：integer，所用 `Temp` 讀數距 t 的分鐘數（上游以 `Temp` 的讀數時間計算），介於 0–25；`Temp` 缺值時為 `NA`。
+    - `D24R`：當日累積雨量（mm），自當日 00:00 起累積（00:00 那筆仍是前一天全日總量），只取區間 (t − 15, t] 內最後一筆有效觀測；`-99` 轉 `NA`，雨跡 `-990` 記為 0。
+    - `D24R_trace`：logical，該筆 `D24R` 原始值是否為雨跡 `-990`；與 `D24R` 同時缺值。
+    - `rain`：integer 降雨指標，區間內 `D24R` 有變動為 1、無變動為 0；終點 `D24R` 缺值或變動時點無法判定為 `NA`。
+- Data path: `data/processed/weather/weather_taipei_15min_2024_2025.parquet` (the exact file this notebook reads)
+- Source data: `data/processed/weather_taipei_2024_15min.csv`、`data/processed/weather_taipei_2025_15min.csv`（再往上游為 `data/raw/weather_raw/` 中 2024、2025 年每日原始檔，逐檔 SHA-256 列於 `data/code/weather_raw_manifest.csv` 與 `data/code/weather_raw_manifest_2025.csv`）
+- Processing code: `data/code/weather_taipei_combine_2024_2025.Rmd`（合併；兩年 CSV 分別由 `data/code/weather_taipei_2024_15min.Rmd`、`data/code/weather_taipei_2025_15min.Rmd` 產生）
+- Role: `analysis`
+- Verification status: 2026-11-08 乾淨 R 程序 knit 本文件：SHA-256 相符；7 欄、70,176 列、欄位型態符合；`datetime` 不重複且每 15 分鐘連續；`HUMD` 介於 0–1、`weather_age_min` 介於 0–30（不含 30）且與 `Temp` 同時缺值、`D24R` ≥ 0、`rain` 只有 0／1／`NA`、`D24R_trace` 與 `D24R` 同時缺值、`D24R` 缺值時 `rain` 必為 `NA`，全部通過。
+- SHA-256: `574c2d55229125faff1e6ba305187be1900dab1475b4f059a441c7d7aa8574fa`
+- Downstream analysis input: `data/processed/weather/weather_taipei_15min_2024_2025.parquet` (must equal Data path)
+
+Keep these paths and the `PROJECT-PROPOSAL.md` Data Artifacts row consistent. The source
+and processing links describe lineage; later finding notebooks read this exact
+processed file. For train/test data, document each file and its role separately.
+
+讀取 Parquet 使用 `arrow` 套件（tidyverse 沒有 Parquet 讀取功能）。
+
+```{r}
+library(tidyverse)
+library(arrow)
+
+find_project_root <- function(start = getwd()) {
+  candidate <- normalizePath(start, winslash = "/", mustWork = TRUE)
+  repeat {
+    if (file.exists(file.path(candidate, "AGENTS.md")) &&
+        dir.exists(file.path(candidate, "templates"))) return(candidate)
+    parent <- dirname(candidate)
+    if (identical(parent, candidate)) stop("Open this notebook within the student project containing AGENTS.md and templates/.")
+    candidate <- parent
+  }
+}
+PROJECT_ROOT <- find_project_root()
+
+project_file <- function(relative_path, area, must_exist = TRUE) {
+  # Exact project-relative paths only; no first-file search or OS-root /data path.
+  parts <- strsplit(relative_path, "/", fixed = TRUE)[[1]]
+  if (grepl("^(/|~|[A-Za-z]:)", relative_path) || ".." %in% parts ||
+      grepl("<", relative_path, fixed = TRUE) ||
+      !startsWith(relative_path, paste0("data/", area, "/"))) {
+    stop("Replace the placeholder with an exact path inside data/", area, "/: ", relative_path)
+  }
+  path <- file.path(PROJECT_ROOT, relative_path)
+  if (must_exist && (!file.exists(path) || dir.exists(path))) stop("Input file not found: ", path)
+  # Resolve existing ancestors to reject a path that leaves the project via a symlink.
+  ancestor <- path
+  while (!file.exists(ancestor)) ancestor <- dirname(ancestor)
+  resolved <- normalizePath(ancestor, winslash = "/", mustWork = TRUE)
+  allowed <- normalizePath(file.path(PROJECT_ROOT, "data", area), winslash = "/", mustWork = TRUE)
+  if (!startsWith(allowed, paste0(PROJECT_ROOT, "/"))) {
+    stop("data/", area, "/ resolves outside the project root.")
+  }
+  if (!identical(resolved, allowed) && !startsWith(resolved, paste0(allowed, "/"))) {
+    stop("Resolved path leaves data/", area, "/: ", relative_path)
+  }
+  path
+}
+
+sha256_file <- function(path) {
+  if (!requireNamespace("digest", quietly = TRUE)) {
+    stop("Cannot verify input identity: digest is unavailable. Use an available SHA-256 implementation before loading data.")
+  }
+  digest::digest(file = path, algo = "sha256", serialize = FALSE)
+}
+
+verify_input_sha256 <- function(path, expected) {
+  # Bind this run to the exact file inspected when the notebook was prepared.
+  if (!is.character(expected) || length(expected) != 1L || is.na(expected) ||
+      !grepl("^[0-9a-fA-F]{64}$", expected)) {
+    stop("Fill the expected SHA-256 from the inspected input before loading data.")
+  }
+  actual <- sha256_file(path)
+  if (!identical(actual, tolower(expected))) stop("Input changed: identify the new version before loading ", basename(path), ".")
+  actual
+}
+
+```
+
+## Change for Your Own Data
+
+```{r}
+INPUT_RELATIVE_PATH <- "data/processed/weather/weather_taipei_15min_2024_2025.parquet"
+input_data_file <- project_file(INPUT_RELATIVE_PATH, "processed")
+EXPECTED_COLUMNS <- c("datetime", "Temp", "HUMD", "weather_age_min", "D24R", "D24R_trace", "rain")
+EXPECTED_ROWS <- 70176L # 35,136 (2024) + 35,040 (2025) 15-minute periods.
+EXPECTED_SHA256 <- "574c2d55229125faff1e6ba305187be1900dab1475b4f059a441c7d7aa8574fa"
+```
+
+## Summary
+
+```{r}
+input_fingerprint <- verify_input_sha256(input_data_file, EXPECTED_SHA256)
+df <- read_parquet(input_data_file)
+print(list(data_path = INPUT_RELATIVE_PATH, rows = nrow(df),
+           schema = vapply(df, function(x) paste(class(x), collapse = "/"), character(1)),
+           time_zone = attr(df$datetime, "tzone"),
+           sha256 = sha256_file(input_data_file)))
+```
+
+### Sample
+
+```{r}
+head(df, 10)
+```
+
+### Summary Stats
+
+```{r}
+summary(df)
+```
+
+各年份的有效 N 與缺值數（百分比分母為該年時段數）：
+
+```{r}
+df |>
+  mutate(year = year(datetime)) |>
+  group_by(year) |>
+  summarise(
+    periods = n(),
+    temp_missing = sum(is.na(Temp)),
+    humd_missing = sum(is.na(HUMD)),
+    d24r_missing = sum(is.na(D24R)),
+    rain_missing = sum(is.na(rain)),
+    rain_missing_pct = round(100 * mean(is.na(rain)), 2)
+  )
+```
+
+數值欄位的分布（N 為非缺值時段數）：
+
+```{r}
+df |>
+  select(Temp, HUMD, weather_age_min, D24R) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "value") |>
+  group_by(variable) |>
+  summarise(
+    mean = mean(value, na.rm = TRUE),
+    min = min(value, na.rm = TRUE),
+    q25 = quantile(value, 0.25, na.rm = TRUE),
+    q50 = median(value, na.rm = TRUE),
+    q75 = quantile(value, 0.75, na.rm = TRUE),
+    max = max(value, na.rm = TRUE),
+    sd = sd(value, na.rm = TRUE),
+    N = sum(!is.na(value)),
+    missing = sum(is.na(value))
+  )
+```
+
+`rain` 與 `D24R_trace` 的次數（`rain` 比例分母為該年全部時段、`D24R_trace` 為全部 70,176 時段，皆含 `NA`）；以及 `weather_age_min` 的分布：
+
+```{r}
+df |>
+  mutate(year = year(datetime)) |>
+  count(year, rain) |>
+  group_by(year) |>
+  mutate(share = round(n / sum(n), 4)) |>
+  ungroup()
+
+df |>
+  count(D24R_trace) |>
+  mutate(share = round(n / sum(n), 4))
+
+df |>
+  count(weather_age_min) |>
+  mutate(share = round(n / sum(n), 4))
+```
+
+### Assertions
+
+```{r}
+if (length(EXPECTED_COLUMNS) == 0L || any(grepl("<", EXPECTED_COLUMNS, fixed = TRUE))) {
+  stop("Fill the expected schema and dataset-specific assertions before verification.")
+}
+stopifnot(identical(names(df), EXPECTED_COLUMNS))
+if (!is.null(EXPECTED_ROWS)) stopifnot(nrow(df) == EXPECTED_ROWS)
+
+# Types written by the processing notebook.
+stopifnot(
+  inherits(df$datetime, "POSIXct"),
+  identical(attr(df$datetime, "tzone"), "Asia/Taipei"),
+  is.double(df$Temp),
+  is.double(df$HUMD),
+  is.integer(df$weather_age_min),
+  is.double(df$D24R),
+  is.logical(df$D24R_trace),
+  is.integer(df$rain)
+)
+
+# Key: one row per 15 minutes, continuous from 2024-01-01 00:00 to 2025-12-31 23:45.
+expected_grid <- seq(
+  ymd_hms("2024-01-01 00:00:00", tz = "Asia/Taipei"),
+  ymd_hms("2025-12-31 23:45:00", tz = "Asia/Taipei"),
+  by = "15 min"
+)
+stopifnot(
+  !anyNA(df$datetime),
+  !anyDuplicated(df$datetime),
+  all(df$datetime == expected_grid)
+)
+
+# Value rules documented by the upstream processing notebooks.
+stopifnot(
+  all(between(df$HUMD, 0, 1), na.rm = TRUE),
+  all(df$weather_age_min >= 0L & df$weather_age_min < 30L, na.rm = TRUE),
+  identical(is.na(df$weather_age_min), is.na(df$Temp)),
+  all(df$D24R >= 0, na.rm = TRUE),
+  all(df$rain %in% c(0L, 1L, NA)),
+  identical(is.na(df$D24R), is.na(df$D24R_trace)),
+  all(is.na(df$rain[is.na(df$D24R)]))
+)
+
+actual_sha256 <- sha256_file(input_data_file)
+if (!identical(actual_sha256, input_fingerprint)) stop("File changed during documentation: inspect the new version.")
+print(list(data_path = INPUT_RELATIVE_PATH, rows = nrow(df), columns = names(df),
+           sha256 = actual_sha256,
+           status = "configured checks passed"))
+```
