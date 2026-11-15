@@ -41,6 +41,11 @@ field_polygon <- field_vertices |>
 # 2025 snapshots (added 2026-11-08): 臺大人文館 (opened 2025-02-04) lies inside
 # the polygon and needs no manual entry; 羅斯福路三段283巷 (opened 2025-10-10)
 # lies outside it and is listed below.
+# A second batch of 11 stations (NTUST gates, MRT Taipower Building exits,
+# Daan Sports Center, NTU Yonglin Biomedical Engineering Hall, Heping-Wolong)
+# was specified by the team on 2026-11-15; they are not on the gap list.
+# 臺灣科技大學正門 sits about 5 m outside polygon vertex 12, so it is listed
+# here to keep it independent of small boundary edits.
 manual_stations <- tribble(
   ~StationUID,    ~station_name,
   "TPE500119005", "臺大水源舍區A棟",
@@ -64,7 +69,19 @@ manual_stations <- tribble(
   "TPE500101012", "辛亥路一段30號前",
   "TPE500101016", "羅斯福路三段245號前",
   "TPE500101014", "羅斯福路三段311號前",
-  "TPE500101265", "羅斯福路三段283巷"
+  "TPE500101265", "羅斯福路三段283巷",
+  # Added 2026-11-15
+  "TPE500101027", "臺灣科技大學後門",
+  "TPE500101025", "臺灣科技大學側門",
+  "TPE500101024", "臺灣科技大學正門",
+  "TPE500101104", "捷運臺電大樓站(2號出口)",
+  "TPE500101207", "捷運臺電大樓站(2號出口)_1",
+  "TPE500106007", "捷運臺電大樓站(1號出口)",
+  "TPE500106011", "捷運臺電大樓站(5號出口)",
+  "TPE500101191", "大安運動中心",
+  "TPE500101015", "大安運動中心停車場",
+  "TPE500101030", "臺大永齡生醫工程館",
+  "TPE500101019", "和平臥龍街口"
 )
 
 # Read all non-empty daily snapshots
