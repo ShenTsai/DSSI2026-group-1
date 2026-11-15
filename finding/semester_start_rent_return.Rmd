@@ -1,0 +1,510 @@
+---
+title: "開學前後兩週臺大周邊 YouBike 借還頻率比較（2024–2025）"
+author: "李芸榛"
+date: "2026-11-10"
+---
+
+<!-- Deliver the Rmd in finding/ directly for review; HTML is not required and
+is produced only when separately requested. Use the student's requested or
+existing filename, or a descriptive basename. Created At and the YAML date
+are fixed creation dates. Follow the project-root FINDING-RULES.md for handoff
+and external-action scope. -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE, message = FALSE, warning = FALSE,
+  dev = "ragg_png", dpi = 150, fig.width = 8, fig.height = 5,
+  fig.path = "semester_start_rent_return_figures/"
+)
+```
+
+# Background
+
+- **Author**: 李芸榛
+- **Created At**: 2026-11-10
+- **Research Motivation and Context (why are we interested in the findings?)：**
+  本組研究臺大周邊 YouBike 2.0 站點的車輛調度，提案把「開學週」列為學期內的情境變數（1.4.1 節）。本分析回答一個描述性的問題：**開學後兩週的借車與還車次數，比開學前兩週多了多少？增加集中在哪些時段與站點？** 若開學帶來的需求跳升很大，調度與預測模型就不能把開學前的寒暑假資料直接套用到開學後。
+
+  - **資料**：[`data/processed/youbike_station_hourly_flow/youbike_station_hourly_flow_2024_2025.parquet`](../data/processed/youbike_station_hourly_flow/youbike_station_hourly_flow_2024_2025.parquet)（SHA-256 `3db6469d…41ca`，與[文件](../data/processed/youbike_station_hourly_flow/youbike_station_hourly_flow_doc.ipynb)記錄相同），為研究範圍內 109 站 2024–2025 年每站每小時的借出筆數（`rent_total`）、還入筆數（`return_total`）與借還總量（`volume` = 借出 + 還入），由 v7 交易資料彙總，由 [`data/code/youbike_station_hourly_flow.ipynb`](../data/code/youbike_station_hourly_flow.ipynb) 產生。上班日與星期取自 [`data/processed/calendar_2024.csv`](../data/processed/calendar_2024.csv)（SHA-256 `0625623f…aaee`）與 [`data/processed/calendar_2025.csv`](../data/processed/calendar_2025.csv)（SHA-256 `91a87c16…53c4`），由 [`data/code/youbike_flow_hourly.Rmd`](../data/code/youbike_flow_hourly.Rmd) 產生、組員手動修正，2026-11-10 再以 [`data/code/calendar_semester_buffer.R`](../data/code/calendar_semester_buffer.R) 把學期旗標延伸到開學前 2 天與期末後 7 天（processed-data 文件待建立）。本分析只使用日曆的上班日與星期，不受這次延伸影響。
+  - **開學日**：臺大正式開學日（日曆檔 `semester` 由 0 變 1 後的第 3 天，因為學期旗標已延伸到開學前 2 天），即 112-2（2024-02-19）、113-1（2024-09-02）、113-2（2025-02-17）、114-1（2025-09-01）四次。
+  - **比較窗口**：「開學前兩週」= 開學日前 14 天（第 −14 至 −1 天）；「開學後兩週」= 開學日起 14 天（第 0 至 13 天）。四次開學共 112 天。
+  - **分析單位**：每站每日（把每小時借還加總到日）；只保留該站已啟用（`in_service = 1`）的日子。窗口內共 108 站（羅斯福路三段283巷 2025-10-10 才啟用，不在任何窗口內），11,703 個站日。
+  - **上班日**：日曆檔 `weekday = 1`，排除週末、國定假日與颱風假，補班日算上班日。
+
+- **Main Findings and Takeaways：**
+  1. **開學後兩週借還次數明顯增加，約多五成。** 四學期合併，研究範圍全區每日借出由開學前平均 15,671 次增為 23,136 次（+47.6%），還入由 15,261 次增為 22,648 次（+48.4%），Welch t 檢定 p < .0001（表 3）。只比較上班日時增幅為 +53.5%／+54.2%（表 4）。在每站每日層級控制站點 × 學期、星期與上班日後，Poisson 迴歸估計開學後借出增加 48.6%（95% CI：38.6%–59.3%）、還入增加 49.4%（39.5%–60.1%），p < .01（表 5、表 6）。
+  2. **借出與還入同步增加**：每一學期兩者的增幅都相差不到 1 個百分點，所以開學主要放大全區的流動量，沒有改變全區借還之間的平衡。
+  3. **四次開學都顯著增加，春季的增幅大於秋季**：控制後的增幅為 112-2 約 72–75%、113-2 約 65%，113-1 約 35%、114-1 約 44%，95% 信賴區間都不含 0（圖 2、表 6b）。春季開學前兩週是寒假尾聲（2024 年含春節），基期較低。
+  4. **增加集中在白天上課時段**：上班日每站每小時借還總量增加最多的是 12 時（+25.4 次，+92%）、15 時（+21.5 次，+118%）與 13 時（+17.7 次，+75%）；早上 8 時（+33%）與傍晚 17 時（+50%）的尖峰也變大，00–06 時幾乎不變（圖 3、表 7）。開學後在中午和下午出現新的尖峰，型態與上課、換教室、午餐時間相符。
+  5. **校園核心站點增加最多**：上班日每日借還總量增加最多的是臺大小福樓東側（+990 次，+133%）、第一活動中心西南側（+953 次，+106%）與捷運公館站 2 號出口（+885 次，+30%）；臺大共同教室東南側增幅最大（+302%）。校外的自來水園區、臺北自來水事業處、辛亥路一段 30 號前幾乎沒有變化（+1%–7%）（表 8、表 9）。
+
+- **Future Direction：**
+  - 加入天氣（降雨、氣溫）作為控制，並與前一年同期或期中週比較，以區分開學效果與季節趨勢。
+  - 以開學後的小時借還分布，作為開學週需求預測與調度的情境參數；並檢查開學後中午與下午尖峰時，教學區站點的空站／滿站時間是否增加（觀察到的借還只是被滿足的需求）。
+  - 依站點類型（捷運轉乘、宿舍、教學區）分組估計開學效果，並看淨流量（還入 − 借出）在開學後是否改變方向。
+
+```{r}
+# Load packages here
+library(tidyverse)
+library(arrow)
+library(fixest)
+
+# Chinese labels in figures need a CJK font; use the first one installed.
+cjk_fonts <- c("PingFang TC", "Heiti TC", "Noto Sans CJK TC", "Noto Sans TC", "Microsoft JhengHei")
+installed_fonts <- unique(systemfonts::system_fonts()$family)
+PLOT_FONT <- cjk_fonts[cjk_fonts %in% installed_fonts][1]
+if (is.na(PLOT_FONT)) stop("Install a Traditional Chinese font (e.g., Noto Sans CJK TC) to draw the figures.")
+theme_set(theme_minimal(base_family = PLOT_FONT, base_size = 12))
+```
+
+```{r}
+# Load input data here and please finish all the data manipulation here.
+
+# Locate the project root: nearest ancestor containing AGENTS.md and templates/.
+find_project_root <- function(start = getwd()) {
+  dir <- normalizePath(start)
+  repeat {
+    if (file.exists(file.path(dir, "AGENTS.md")) && dir.exists(file.path(dir, "templates"))) {
+      return(dir)
+    }
+    parent <- dirname(dir)
+    if (parent == dir) stop("Project root (AGENTS.md + templates/) not found.")
+    dir <- parent
+  }
+}
+PROJECT_ROOT <- find_project_root()
+
+# Exact inputs and their verified SHA-256; stop on any mismatch.
+INPUTS <- tribble(
+  ~name,      ~path,                                                                                   ~sha256,
+  "flow",     "data/processed/youbike_station_hourly_flow/youbike_station_hourly_flow_2024_2025.parquet", "3db6469dc42efb8dc7fa24661096de56b7b6fd71465d3fd9f3214767daff41ca",
+  "cal_2024", "data/processed/calendar_2024.csv",                                                       "0625623f24d1e21b3f9a9877e486eec6a1703da8891337485e5e52b88335aaee",
+  "cal_2025", "data/processed/calendar_2025.csv",                                                       "91a87c16760043bd57b3e15fe85945ce2ebabf8f3b2b9ddca5781a72783553c4"
+)
+for (i in seq_len(nrow(INPUTS))) {
+  full_path <- file.path(PROJECT_ROOT, INPUTS$path[i])
+  if (!file.exists(full_path)) stop("Missing input: ", INPUTS$path[i])
+  actual_hash <- digest::digest(file = full_path, algo = "sha256")
+  if (actual_hash != INPUTS$sha256[i]) stop("SHA-256 mismatch: ", INPUTS$path[i])
+}
+
+flow_hourly <- read_parquet(file.path(PROJECT_ROOT, INPUTS$path[1]))
+calendar <- bind_rows(
+  read_csv(file.path(PROJECT_ROOT, INPUTS$path[2]), col_types = "Diiic"),
+  read_csv(file.path(PROJECT_ROOT, INPUTS$path[3]), col_types = "Diiic")
+)
+
+# Schema and key checks
+stopifnot(
+  all(c("station_id", "station_name", "datetime", "in_service",
+        "rent_total", "return_total", "volume") %in% names(flow_hourly)),
+  nrow(distinct(flow_hourly, station_id, datetime)) == nrow(flow_hourly),
+  all(c("date", "day_of_week", "weekday") %in% names(calendar)),
+  !anyDuplicated(calendar$date)
+)
+
+# Official semester start dates: 112-2, 113-1, 113-2, 114-1.
+# Since 2026-11-10 the calendar's `semester` flag also covers the 2 days before each start
+# (data/code/calendar_semester_buffer.R), so the official start is 2 days after the flag turns on.
+semester_starts <- tribble(
+  ~semester_label,       ~start_date,
+  "112-2（2024-02-19）", as.Date("2024-02-19"),
+  "113-1（2024-09-02）", as.Date("2024-09-02"),
+  "113-2（2025-02-17）", as.Date("2025-02-17"),
+  "114-1（2025-09-01）", as.Date("2025-09-01")
+)
+stopifnot(all(calendar$semester[match(semester_starts$start_date - 2, calendar$date)] == 1))
+stopifnot(all(calendar$semester[match(semester_starts$start_date - 3, calendar$date)] == 0))
+
+# Event window: 14 days before (day -14 to -1) and 14 days from the start (day 0 to 13).
+event_days <- semester_starts |>
+  mutate(date = map(start_date, \(d) seq(d - 14, d + 13, by = "day"))) |>
+  unnest(date) |>
+  mutate(
+    event_day = as.integer(date - start_date),
+    post = as.integer(event_day >= 0)
+  )
+
+# Station-day counts: sum hourly rents/returns within each day; keep in-service stations only.
+station_day <- flow_hourly |>
+  mutate(
+    datetime = as.POSIXct(datetime, format = "%Y-%m-%d %H:%M:%S", tz = "Asia/Taipei"),
+    date = as.Date(datetime, tz = "Asia/Taipei")
+  ) |>
+  filter(date %in% event_days$date, in_service == 1) |>
+  group_by(station_id, station_name, date) |>
+  summarise(
+    rent_total = sum(rent_total),
+    return_total = sum(return_total),
+    volume = sum(volume),
+    .groups = "drop"
+  ) |>
+  inner_join(event_days, by = "date") |>
+  left_join(select(calendar, date, day_of_week, weekday), by = "date") |>
+  mutate(
+    period = factor(if_else(post == 1, "開學後兩週", "開學前兩週"),
+                    levels = c("開學前兩週", "開學後兩週")),
+    workday = factor(if_else(weekday == 1, "上班日", "非上班日"),
+                     levels = c("非上班日", "上班日")),
+    day_of_week = factor(day_of_week, levels = 1:7,
+                         labels = c("週一", "週二", "週三", "週四", "週五", "週六", "週日")),
+    semester_label = factor(semester_label, levels = semester_starts$semester_label),
+    station_semester = paste(station_id, semester_label)
+  )
+
+stopifnot(!anyNA(station_day$weekday))
+
+# Hourly flow for the time-of-day profile (workdays in the windows only).
+hourly_window <- flow_hourly |>
+  mutate(
+    datetime = as.POSIXct(datetime, format = "%Y-%m-%d %H:%M:%S", tz = "Asia/Taipei"),
+    date = as.Date(datetime, tz = "Asia/Taipei"),
+    hour = as.integer(format(datetime, "%H"))
+  ) |>
+  filter(date %in% event_days$date, in_service == 1) |>
+  inner_join(event_days, by = "date") |>
+  left_join(select(calendar, date, weekday), by = "date") |>
+  mutate(period = factor(if_else(post == 1, "開學後兩週", "開學前兩週"),
+                         levels = c("開學前兩週", "開學後兩週")))
+
+rm(flow_hourly)
+
+station_day |>
+  select(station_name, date, semester_label, event_day, period, workday,
+         day_of_week, rent_total, return_total, volume) |>
+  head(10) |>
+  knitr::kable(caption = "分析樣本前 10 筆（每站每日）")
+```
+
+**資料處理說明**：讀入前先核對三個輸入檔的 SHA-256 與必要欄位，並確認站點 × 小時無重複、日曆日期無重複；任何不符就停止。把每小時資料加總成每站每日，只保留已啟用的站日，再接上日曆的上班日與星期。資料沒有缺值（見表 1、表 2）；日曆 `semester` 欄只用來確認四個開學日（開學前第 2 天為 1、第 3 天為 0），不進入分析。
+
+```{r}
+# Summary statistics for every variable used below (station-day sample).
+numeric_summary <- station_day |>
+  select(
+    `借出次數（每站每日）` = rent_total,
+    `還入次數（每站每日）` = return_total,
+    `借還總量（每站每日）` = volume,
+    `相對開學日的天數` = event_day
+  ) |>
+  pivot_longer(everything(), names_to = "變數", values_to = "value") |>
+  group_by(變數) |>
+  summarise(
+    平均數 = mean(value, na.rm = TRUE),
+    最小值 = min(value, na.rm = TRUE),
+    P25 = quantile(value, 0.25, na.rm = TRUE),
+    中位數 = median(value, na.rm = TRUE),
+    P75 = quantile(value, 0.75, na.rm = TRUE),
+    最大值 = max(value, na.rm = TRUE),
+    標準差 = sd(value, na.rm = TRUE),
+    有效N = sum(!is.na(value)),
+    缺值N = sum(is.na(value)),
+    .groups = "drop"
+  )
+knitr::kable(numeric_summary, digits = 2,
+             caption = sprintf("表 1：數值變數敘述統計（每站每日，N = %s）",
+                               format(nrow(station_day), big.mark = ",")))
+
+categorical_summary <- station_day |>
+  transmute(
+    `時期` = as.character(period),
+    `學期` = as.character(semester_label),
+    `是否上班日` = as.character(workday),
+    `星期` = as.character(day_of_week),
+    `站點` = station_name
+  ) |>
+  pivot_longer(everything(), names_to = "變數", values_to = "類別") |>
+  count(變數, 類別, name = "N") |>
+  group_by(變數) |>
+  mutate(
+    `百分比(%)` = 100 * N / sum(N),
+    類別數 = n(),
+    分母N = sum(N)
+  ) |>
+  slice_max(N, n = 10, with_ties = FALSE) |>
+  ungroup() |>
+  arrange(變數, desc(N))
+knitr::kable(categorical_summary, digits = 1,
+             caption = "表 2：類別變數分佈（每站每日；百分比分母為全部非缺值觀察，「站點」只列前 10 名；四個類別變數皆無缺值）")
+```
+
+表 1 為每站每日借出、還入與借還總量的分佈：每站每日平均借出 185.7 次、還入 181.4 次，但高度右偏（中位數 126 與 121，最大 2,590）。少數大站（例如捷運公館站出口）的量遠大於其他站，因此下方迴歸使用 Poisson 模型，係數可解讀為百分比變動，不會被大站的絕對量主導。表 2 顯示開學前後各占一半站日；四個學期的站日數不同，是因為各學期啟用的站數不同（98–108 站）。
+
+### The actual analysis starts below
+
+```{r analysis-daily-total}
+# Zone-wide daily totals (all in-service stations) by event day.
+daily_total <- station_day |>
+  group_by(semester_label, date, event_day, period, workday) |>
+  summarise(
+    rent_total = sum(rent_total),
+    return_total = sum(return_total),
+    stations = n_distinct(station_id),
+    .groups = "drop"
+  )
+
+daily_total |>
+  pivot_longer(c(rent_total, return_total), names_to = "type", values_to = "count") |>
+  mutate(type = if_else(type == "rent_total", "借出", "還入")) |>
+  ggplot(aes(event_day, count / 1000, colour = type)) +
+  geom_vline(xintercept = -0.5, linetype = "dashed", colour = "grey40") +
+  geom_line() +
+  geom_point(aes(shape = workday), size = 1.8) +
+  facet_wrap(~semester_label, ncol = 2) +
+  scale_shape_manual(values = c("非上班日" = 1, "上班日" = 16)) +
+  labs(
+    title = "圖 1：開學前後 14 天研究範圍內每日借出與還入次數",
+    x = "相對開學日的天數（0 = 開學日，虛線左側為開學前）",
+    y = "全區每日次數（千次）",
+    colour = "交易類型", shape = "日別"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+**圖 1** 是四次開學各自前後 14 天、研究範圍內所有啟用站點每日借出（紅）與還入（藍）次數的加總，實心點為上班日、空心點為非上班日。四次開學都在開學日（虛線右側）出現明顯跳升，之後維持在較高水準，只有週末下降。112-2 開學前的低谷是 2024 年春節（2/8–2/14）。借出與還入兩條線幾乎重疊。
+
+要注意 2024 年上半年的整體量明顯低於 2025 年同期（例如 112-2 開學後每日約 1 萬次，113-2 約 2.4 萬次），所以跨學期比較時看變動率，不比較絕對水準；迴歸也用站點 × 學期固定效果吸收各學期的水準差異。
+
+```{r analysis-ttest}
+# Welch two-sample t-test on zone-wide daily totals: post vs pre, by semester and pooled.
+compare_periods <- function(df, outcome) {
+  pre <- df[[outcome]][df$period == "開學前兩週"]
+  post <- df[[outcome]][df$period == "開學後兩週"]
+  test <- t.test(post, pre)
+  tibble(
+    `開學前平均` = mean(pre), `開學前標準差` = sd(pre), `開學前天數` = length(pre),
+    `開學後平均` = mean(post), `開學後標準差` = sd(post), `開學後天數` = length(post),
+    `差異（後−前）` = mean(post) - mean(pre),
+    `變動率(%)` = 100 * (mean(post) / mean(pre) - 1),
+    `p值` = test$p.value
+  )
+}
+
+ttest_table <- function(df) {
+  bind_rows(
+    df |>
+      group_by(學期 = as.character(semester_label)) |>
+      group_modify(\(d, key) bind_rows(
+        compare_periods(d, "rent_total") |> mutate(結果 = "借出"),
+        compare_periods(d, "return_total") |> mutate(結果 = "還入")
+      )) |>
+      ungroup(),
+    bind_rows(
+      compare_periods(df, "rent_total") |> mutate(結果 = "借出"),
+      compare_periods(df, "return_total") |> mutate(結果 = "還入")
+    ) |>
+      mutate(學期 = "四學期合併")
+  ) |>
+    relocate(學期, 結果) |>
+    mutate(`p值` = format.pval(`p值`, digits = 2, eps = 1e-4))
+}
+
+knitr::kable(ttest_table(daily_total), digits = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0),
+             format.args = list(big.mark = ","),
+             caption = sprintf("表 3：開學前後兩週全區每日借出／還入次數比較（全部日子，N = %d 天）", nrow(daily_total)))
+
+workday_total <- filter(daily_total, workday == "上班日")
+knitr::kable(ttest_table(workday_total), digits = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0),
+             format.args = list(big.mark = ","),
+             caption = sprintf("表 4：同上，只比較上班日（N = %d 天）", nrow(workday_total)))
+```
+
+**表 3、表 4** 以全區每日總次數為觀察值，比較開學前後兩組天數的平均數。檢定用 Welch 兩樣本 t 檢定（不假設兩組變異數相同），假設各日彼此獨立；但相鄰日子的借還量有相關，而且每學期每組只有 14 天，所以 p 值只是粗略參考。
+
+- 全部日子（表 3）：四學期合併，開學後每日借出比開學前多 7,464 次（+47.6%）、還入多 7,387 次（+48.4%），p < .0001。每一學期都顯著（p ≤ .009）。
+- 只比較上班日（表 4）：排除週末與國定假日後，四學期合併增幅略大（借出 +53.5%、還入 +54.2%），代表差距不是假日分布不同造成的；開學後的增加主要發生在上班日，週末增加較少。112-2 的增幅由 91% 降為 58%，是因為開學前兩週的春節（2/8–2/14）被排除。
+
+```{r analysis-regression}
+# Station-day Poisson regressions with station x semester fixed effects.
+models <- list(
+  "借出 (1)" = fepois(rent_total ~ post | station_semester, data = station_day, cluster = ~date),
+  "借出 (2)" = fepois(rent_total ~ post + workday | station_semester + day_of_week,
+                      data = station_day, cluster = ~date),
+  "還入 (3)" = fepois(return_total ~ post | station_semester, data = station_day, cluster = ~date),
+  "還入 (4)" = fepois(return_total ~ post + workday | station_semester + day_of_week,
+                      data = station_day, cluster = ~date)
+)
+
+# Outcome mean and N on each model's actual estimation sample.
+sample_stats <- map(models, \(m) {
+  y <- model.matrix(m, type = "lhs")
+  c(mean = mean(y), n = nobs(m))
+})
+
+regression_table <- etable(
+  models,
+  dict = c(post = "開學後兩週", workday上班日 = "上班日",
+           station_semester = "站點 × 學期", day_of_week = "星期"),
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+  extralines = list(
+    "_^應變數平均（估計樣本）" = map_dbl(sample_stats, "mean") |> round(1),
+    "_^群聚數（日期）" = map_int(models, \(m) length(unique(station_day$date[obs(m)])))
+  ),
+  fitstat = ~ n + pr2,
+  se.below = TRUE
+)
+knitr::kable(regression_table, row.names = FALSE,
+             caption = "表 5：開學後兩週與借還次數（Poisson 迴歸，每站每日；括號內為依日期群聚的標準誤）")
+
+# Implied percentage change with 95% CI
+coef_table <- imap_dfr(models, \(m, name) {
+  ci <- confint(m)["post", ]
+  tibble(
+    模型 = name,
+    係數 = coef(m)[["post"]],
+    `變動率(%)` = 100 * (exp(coef(m)[["post"]]) - 1),
+    `95% CI 下界(%)` = 100 * (exp(ci[[1]]) - 1),
+    `95% CI 上界(%)` = 100 * (exp(ci[[2]]) - 1),
+    `p值` = format.pval(pvalue(m)[["post"]], digits = 2, eps = 1e-4)
+  )
+})
+knitr::kable(coef_table, digits = c(0, 3, 1, 1, 1, 0),
+             caption = "表 6：開學後兩週係數換算為借還次數變動率（95% 信賴區間依日期群聚標準誤）")
+```
+
+**表 5、表 6** 在每站每日層級估計 Poisson 迴歸：
+
+$$E[y_{sd}] = \exp\left(\beta \cdot \text{開學後}_d + \gamma \cdot \text{上班日}_d + \alpha_{s \times \text{學期}} + \delta_{\text{星期}(d)}\right)$$
+
+- $y_{sd}$ 為站點 $s$ 在日期 $d$ 的借出（或還入）次數；「開學後」= 1 為開學後兩週，參照組為開學前兩週；「上班日」的參照組為非上班日；星期固定效果以週一為參照。
+- **站點 × 學期固定效果**讓比較只在同一站、同一次開學內進行，排除站點大小與年度水準差異；模型 (1)、(3) 只有這組固定效果，模型 (2)、(4) 再加入星期固定效果與上班日。
+- $\exp(\beta) - 1$ 即開學後次數的百分比變動。標準誤依**日期**群聚（112 群），因為同一天所有站點共同受到天氣、活動等衝擊。
+- 估計樣本 11,675 站日：Poisson 固定效果模型會排除整組都是 0 的站點 × 學期，這裡是臺大共同教室北側在 112-2 窗口內的 28 天：該站雖標為已啟用，但資料文件記載它到 2024-06 才出現交易。表中的應變數平均以實際估計樣本計算。
+
+結果：開學後借出增加 48.6%（95% CI：38.6%–59.3%）、還入增加 49.4%（39.5%–60.1%），控制星期與上班日前後的估計幾乎相同（47.6% vs 48.6%），p < .01。上班日的借還量約為非上班日的 1.7 倍（$e^{0.53} \approx 1.69$）。這是開學前後的關聯，不是因果效果：開學前後還同時有季節、氣溫等變化（見結論的限制）。
+
+```{r analysis-by-semester}
+# Separate effect for each semester start (model (2)/(4) specification interacted by semester).
+by_semester <- map_dfr(c(借出 = "rent_total", 還入 = "return_total"), \(y) {
+  m <- fepois(
+    as.formula(paste(y, "~ i(semester_label, post) + workday | station_semester + day_of_week")),
+    data = station_day, cluster = ~date
+  )
+  ct <- coeftable(m)
+  ci <- confint(m)
+  keep <- grepl("^semester_label::", rownames(ct))
+  tibble(
+    semester_label = sub("^semester_label::(.*):post$", "\\1", rownames(ct)[keep]),
+    estimate = ct[keep, "Estimate"],
+    low = ci[keep, 1],
+    high = ci[keep, 2]
+  )
+}, .id = "type")
+
+by_semester |>
+  mutate(
+    across(c(estimate, low, high), \(x) 100 * (exp(x) - 1)),
+    semester_label = factor(semester_label, levels = rev(semester_starts$semester_label))
+  ) |>
+  ggplot(aes(estimate, semester_label, colour = type)) +
+  geom_vline(xintercept = 0, colour = "grey50") +
+  geom_pointrange(aes(xmin = low, xmax = high), position = position_dodge(width = 0.5)) +
+  labs(
+    title = "圖 2：各學期開學後兩週借還次數變動率",
+    subtitle = "Poisson 迴歸，控制站點 × 學期、星期與上班日\n線段為 95% 信賴區間（依日期群聚）",
+    x = "相對開學前兩週的變動率（%）",
+    y = "學期（開學日）",
+    colour = "交易類型"
+  ) +
+  theme(legend.position = "bottom")
+
+by_semester |>
+  mutate(
+    `變動率(%)` = 100 * (exp(estimate) - 1),
+    `95% CI 下界(%)` = 100 * (exp(low) - 1),
+    `95% CI 上界(%)` = 100 * (exp(high) - 1)
+  ) |>
+  select(學期 = semester_label, 結果 = type, `變動率(%)`, `95% CI 下界(%)`, `95% CI 上界(%)`) |>
+  arrange(學期, 結果) |>
+  knitr::kable(digits = 1, caption = "表 6b：各學期開學後兩週借還次數變動率（同圖 2）")
+```
+
+**圖 2、表 6b** 讓開學效果依學期不同（其他設定同模型 (2)、(4)）。四次開學的增幅都顯著大於 0：春季（112-2 約 72–75%、113-2 約 65%）高於秋季（113-1 約 35%、114-1 約 44%）。春季的信賴區間較寬，因為寒假與開學前後的日間波動較大。一個可能的解釋是暑假期間校園仍有暑修、新生活動與研究生，開學前的基期較高；寒假尾聲則接近春節，校園人潮較少。
+
+```{r analysis-hourly}
+# Hourly profile on workdays: mean station-hour volume with 95% CI, pre vs post.
+# CI uses the day-level zone mean (one value per day x hour) to respect within-day correlation.
+hourly_profile <- hourly_window |>
+  filter(weekday == 1) |>
+  group_by(period, date, hour) |>
+  summarise(volume = mean(volume), .groups = "drop") |>
+  group_by(period, hour) |>
+  summarise(
+    mean = mean(volume),
+    se = sd(volume) / sqrt(n()),
+    days = n(),
+    .groups = "drop"
+  ) |>
+  mutate(low = mean - qt(0.975, days - 1) * se, high = mean + qt(0.975, days - 1) * se)
+
+ggplot(hourly_profile, aes(hour, mean, colour = period, fill = period)) +
+  geom_ribbon(aes(ymin = low, ymax = high), alpha = 0.2, colour = NA) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(0, 23, 2)) +
+  labs(
+    title = "圖 3：上班日各時段每站平均借還總量（開學前 vs. 開學後兩週）",
+    subtitle = sprintf("四學期合併；開學前 %d 個上班日、開學後 %d 個上班日；帶狀為 95%% 信賴區間",
+                       max(hourly_profile$days[hourly_profile$period == "開學前兩週"]),
+                       max(hourly_profile$days[hourly_profile$period == "開學後兩週"])),
+    x = "時段（小時開始）",
+    y = "每站每小時借還總量（次）",
+    colour = "時期", fill = "時期"
+  ) +
+  theme(legend.position = "bottom")
+
+hourly_profile |>
+  select(period, hour, mean) |>
+  pivot_wider(names_from = period, values_from = mean) |>
+  mutate(`差異（後−前）` = 開學後兩週 - 開學前兩週,
+         `變動率(%)` = 100 * (開學後兩週 / 開學前兩週 - 1)) |>
+  rename(時段 = hour) |>
+  knitr::kable(digits = 1,
+               caption = "表 7：上班日各時段每站平均借還總量（四學期合併）")
+```
+
+**圖 3、表 7** 只看上班日，計算各時段所有啟用站點的平均每站每小時借還總量。信賴區間的作法是先算每一天、每一時段的全區平均，再以天為觀察值計算 95% 信賴區間（開學前 37 個上班日、開學後 38 個上班日），以免把同一天各站的相關當成獨立樣本。
+
+開學前後的形狀明顯不同：開學前的型態是早晚通勤雙峰（8 時、17 時）；開學後多出 12 時（52.9 次，開學前 27.5 次）、15 時（39.7 次，開學前 18.2 次）兩個尖峰，9–10 時與 12–16 時都高出 50% 以上，兩條信賴帶在 7–21 時（22 時除外）都不重疊。夜間 00–06 時幾乎沒有差別。這與上課節次、中午用餐與換教室的移動相符。
+
+```{r analysis-stations}
+# Stations with the largest change in average daily volume (workdays, pooled semesters).
+station_change <- station_day |>
+  filter(workday == "上班日") |>
+  group_by(station_name, period) |>
+  summarise(volume = mean(volume), days = n(), .groups = "drop") |>
+  pivot_wider(names_from = period, values_from = c(volume, days)) |>
+  filter(days_開學前兩週 >= 10, days_開學後兩週 >= 10) |>
+  mutate(
+    站點 = str_remove(station_name, "^YouBike2.0_"),
+    `差異（後−前）` = volume_開學後兩週 - volume_開學前兩週,
+    `變動率(%)` = 100 * (volume_開學後兩週 / volume_開學前兩週 - 1)
+  )
+
+station_change |>
+  slice_max(`差異（後−前）`, n = 10) |>
+  select(站點, 開學前 = volume_開學前兩週, 開學後 = volume_開學後兩週, `差異（後−前）`, `變動率(%)`) |>
+  knitr::kable(digits = 1, caption = sprintf(
+    "表 8：上班日每日借還總量增加最多的 10 站（四學期合併；%d 站中兩期各至少 10 個上班日者）",
+    nrow(station_change)))
+
+station_change |>
+  slice_min(`差異（後−前）`, n = 5) |>
+  select(站點, 開學前 = volume_開學前兩週, 開學後 = volume_開學後兩週, `差異（後−前）`, `變動率(%)`) |>
+  knitr::kable(digits = 1, caption = "表 9：上班日每日借還總量減少最多（或增加最少）的 5 站")
+```
+
+**表 8、表 9** 比較每站在開學前後上班日的平均每日借還總量（只保留兩期各至少 10 個上班日的站，共 108 站）。增加最多的站都在校園核心（小福樓、第一活動中心、樂學館、社科院、新體育館、共同教室）或宿舍（女九舍、男一舍），以及捷運公館站 2、3 號出口；其中共同教室東南側增加約 3 倍，樂學館東側增加 176%。捷運公館站的增幅較小（+30%），但基數大，絕對增加量仍排第三。變化最小的 5 站都在校外住宅區或機關附近，開學前後幾乎相同。這只是兩期平均數的描述，未做逐站檢定。
+
+## 結論與限制
+
+開學後兩週，臺大周邊 YouBike 站點的借出與還入次數比開學前兩週多約五成；四次開學都顯著，春季增幅高於秋季。增加集中在白天上課時段（特別是 12 時與 15 時）與校園核心站點，夜間與校外站點幾乎不變。對調度與預測的意涵是：開學前的寒暑假資料會低估開學後的需求，而且低估集中在特定時段與站點，模型需要納入「是否已開學」這個情境變數。
+
+限制：
+
+1. **前後比較不是因果效果**：開學前後還同時有季節變化（2 月氣溫回升、8–9 月颱風與暑假結束）、春節等假期與校內活動，本分析只控制了星期與上班日，沒有控制天氣，也沒有不受開學影響的對照組。
+2. **觀察到的是被滿足的借還，不是需求**：空站時借不到車、滿站時還不了車，都不會出現在交易紀錄中。開學後尖峰時段若更常空站或滿站，實際需求的增幅可能比本文估計更大。
+3. **年度水準差異**：2024 年上半年的整體借還量明顯低於 2025 年同期，本文以站點 × 學期固定效果與變動率處理，但沒有追查差異的來源。
+4. **推論**：日期群聚標準誤假設不同日期之間獨立；同一學期內相鄰日期可能相關，而學期只有 4 個，無法以學期群聚。t 檢定每組只有 14 天（上班日 6–11 天），p 值應視為粗略參考。
+
+**執行狀態**：2026-11-10 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）完整執行；本文的數字與圖表都取自該次執行結果。圖檔存放在 `finding/semester_start_rent_return_figures/`。
