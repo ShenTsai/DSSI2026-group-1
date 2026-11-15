@@ -3,8 +3,8 @@
 Produced by data/code/youbike_transition_probs.ipynb; reads
 data/processed/youbike_transition/transition_probs.parquet.
 
-Rows = origin stations (109 in-field stations), columns = destinations
-(the same 109 stations + "區外"). Each valid row sums to 1.
+Rows = origin stations (120 in-field stations), columns = destinations
+(the same 120 stations + "區外"). Each valid row sums to 1.
 """
 
 from pathlib import Path
@@ -50,8 +50,8 @@ def get_matrix(period, day_of_week, hour, fallback=True, path=None):
 
     Returns
     -------
-    pandas.DataFrame, index = origin_id (109 stations), columns = dest_id
-    (109 stations + "區外"). Rows that remain NA (also below threshold in the
+    pandas.DataFrame, index = origin_id (120 stations), columns = dest_id
+    (120 stations + "區外"). Rows that remain NA (also below threshold in the
     fallback, or no rentals at all) are all NaN.
     """
     if period not in PERIODS:
