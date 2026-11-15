@@ -11,25 +11,25 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 # Data Description
 - Author: 蔡睿燊
 - Date first created: 20261108
-- Background: 2025 年臺北市 YouBike 2.0 站點即時車位歷史紀錄（交通部 TDX 平臺），只保留研究範圍（臺大／公館一帶多邊形）及人工補入的 109 個站點。規格與處理規則比照 2024 年版本（[文件](youbike_rental_in_field_2024_doc.Rmd)）；站點清單比 2024 年版本多 `臺大人文館`（`TPE500119097`，2025-02-04 啟用）與 `羅斯福路三段283巷`（`TPE500101265`，2025-10-10 啟用）。本組研究臺大周遭站點的車輛數最適化調度，這份資料提供各站可借車數與可還空位的時間序列。
+- Background: 2025 年臺北市 YouBike 2.0 站點即時車位歷史紀錄（交通部 TDX 平臺），只保留研究範圍（臺大／公館一帶多邊形）及人工補入的 120 個站點（2026-11-15 依組員指定再補入多邊形外 11 站：臺灣科技大學 3 個校門、捷運臺電大樓站 1／2／2_1／5 號出口、大安運動中心與其停車場、臺大永齡生醫工程館、和平臥龍街口）。規格與處理規則比照 2024 年版本（[文件](youbike_rental_in_field_2024_doc.Rmd)）；清單中 2025 年才啟用的站點為 `臺大人文館`（`TPE500119097`，2025-02-04 啟用）與 `羅斯福路三段283巷`（`TPE500101265`，2025-10-10 啟用）。本組研究臺大周遭站點的車輛數最適化調度，這份資料提供各站可借車數與可還空位的時間序列。
 - Unit of observation: 站點 × 來源更新時間（`StationUID` × `SrcUpdateTime`），一列為一次站點狀態更新；兩者組合唯一。
 - Sample period: 2025-01-01 00:00 至 2025-12-31 23:58（Asia/Taipei）；365 天中 362 天有資料。
 - Known issues:
     - **3 天沒有資料**：2025-02-12、02-17、02-27。原始檔只有 1 列，且該列不屬於研究範圍，不是處理時刪除的。
-    - **紀錄頻率在下半年明顯變稀**：同站相鄰兩筆的間隔中位數在 1–3 月約 2 分鐘（90% 分位約 9–12 分鐘），8 月起升到 4 分鐘左右，12 月達 7 分鐘（90% 分位 50 分鐘）；每站每日列數由 3 月的約 267 列降到 12 月的約 65 列。全年每日列數中位數 11,159 列，約為 2024 年（25,134 列）的一半。目前無法分辨這是來源更新頻率改變還是實際使用量變化，**跨月或與 2024 年比較列數前，應先整理成固定時間間隔**；間隔變長也會降低短時段狀態的精確度。
+    - **紀錄頻率在下半年明顯變稀**：同站相鄰兩筆的間隔中位數在 1–3 月約 2 分鐘（90% 分位約 9–12 分鐘），8 月起升到 4 分鐘左右，12 月達 7 分鐘（90% 分位 50 分鐘）；每站每日列數由 3 月的約 272 列降到 12 月的約 65 列。全年每日列數中位數 12,404 列，約為 2024 年（28,461 列）的一半。目前無法分辨這是來源更新頻率改變還是實際使用量變化，**跨月或與 2024 年比較列數前，應先整理成固定時間間隔**；間隔變長也會降低短時段狀態的精確度。
     - **個別站點有整段缺漏**：`和平東路二段90巷`（`TPE500101234`）缺 2025-07-03 至 08-27 共 56 天；`臺大獸醫館南側`（`TPE500119089`）缺 2025-11-15 至 12-02 共 18 天。新站 `臺大人文館` 自 2025-02-04 起 328 天有資料，`羅斯福路三段283巷` 自 2025-10-10 起 83 天有資料。
-    - **`ServiceStatus` 已重新編碼**：與 2024 年相同，原始代碼 `2`（54 列，2024 年為 20,662 列）依組員確認改為「停止營運」，分布在 8 站，最多為 `TPE500101012`（23 列）。停止營運時車數仍有數值（平均可借 1.9 輛），分析時通常應排除或另行處理。
+    - **`ServiceStatus` 已重新編碼**：與 2024 年相同，原始代碼 `2`（54 列，2024 年為 20,968 列）依組員確認改為「停止營運」，分布在 8 站，最多為 `TPE500101012`（23 列）。停止營運時車數仍有數值（平均可借 1.9 輛），分析時通常應排除或另行處理。
     - `AvailableRentBikes` 全部等於 `GeneralBikes + ElectricBikes`。
     - `AvailableRentBikes + AvailableReturnBikes` 在同一站內不是固定值（可能因車柱故障或容量調整等），不能直接當作站點容量；2025 年有數站在年中擴充容量（見站位快照的 `BikesCapacity`）。
-    - `UpdateTime` 通常比 `SrcUpdateTime` 晚約 29 秒，但 14,341 列早幾秒，最大相差 13,953 秒（約 3.9 小時）；時間分析以 `SrcUpdateTime` 為準。
+    - `UpdateTime` 通常比 `SrcUpdateTime` 晚約 29 秒，但 16,156 列早幾秒，最大相差 13,953 秒（約 3.9 小時）；時間分析以 `SrcUpdateTime` 為準。
 - Definition for each variable:
-    - 定義取自 TDX OAS 規格（見 [raw codebook](../raw/youbike_rental_codebook.md)），「本檔處理」欄記錄 [處理程式](../code/youbike_rental_in_field_2025.Rmd) 所做的改變；數值範圍來自下方 Summary Stats 的實際輸出。
+    - 定義取自 TDX OAS 規格（見 [raw codebook](../../raw/youbike_rental_codebook.md)），「本檔處理」欄記錄 [處理程式](../../code/youbike_rental_in_field_2025.Rmd) 所做的改變；數值範圍來自下方 Summary Stats 的實際輸出。
 
 | Field | R type | Description | Values / range | 本檔處理 |
 | --- | --- | --- | --- | --- |
-| `StationUID` | character | 站點唯一識別代碼，{業管機關代碼} + {StationID} | 109 個值，皆以 `TPE` 開頭，皆屬於 [stations_in_field.csv](stations_in_field.csv) | 依此欄篩選研究範圍站點 |
-| `StationID` | character | 站點代碼 | 109 個值，等於 `StationUID` 去掉 `TPE` | 以文字讀入，保留前導格式 |
-| `ServiceStatus` | character | 服務狀態 | 「正常營運」5,766,474 列；「停止營運」54 列 | 原始代碼 `2` 改為「停止營運」 |
+| `StationUID` | character | 站點唯一識別代碼，{業管機關代碼} + {StationID} | 120 個值，皆以 `TPE` 開頭，皆屬於 [stations_in_field.csv](../stations_in_field.csv) | 依此欄篩選研究範圍站點 |
+| `StationID` | character | 站點代碼 | 120 個值，等於 `StationUID` 去掉 `TPE` | 以文字讀入，保留前導格式 |
+| `ServiceStatus` | character | 服務狀態 | 「正常營運」6,458,326 列；「停止營運」54 列 | 原始代碼 `2` 改為「停止營運」 |
 | `ServiceType` | character | 服務類型 | 全為 `YouBike2` | 保留原始文字 |
 | `AvailableRentBikes` | integer | 可租借車數 | 0–99 | 文字轉整數 |
 | `AvailableReturnBikes` | integer | 可歸還空位數 | 0–99 | 文字轉整數 |
@@ -39,13 +39,13 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 | `ElectricBikes` | integer | 電動輔助車可租借車數 | 0–37，多數為 0 | 文字轉整數 |
 | `source_date` | Date | 該列所屬原始檔的日期（取自檔名） | 2025-01-01 至 2025-12-31，362 個日期；與 `SrcUpdateTime` 的日期一致 | 新增欄位 |
 
-- Data path: `data/processed/youbike_rental_in_field_2025.parquet` (the exact file this notebook reads)
+- Data path: `data/processed/youbike_rental/youbike_rental_in_field_2025.parquet` (the exact file this notebook reads)
 - Source data: `data/raw/youbike_rental_raw/臺北市公共自行車站點剩餘數量歷史資料2025-MM-DD.CSV`（365 檔，逐檔路徑與 SHA-256 見 `data/code/youbike_rental_raw_manifest_2025.csv`）；站點清單 `data/processed/stations_in_field.csv`
 - Processing code: `data/code/youbike_rental_in_field_2025.Rmd`
 - Role: `analysis`
-- Verification status: 2026-11-08 以乾淨 R 程序 knit 本檔，下方 Assertions 全部通過（結果見文末「執行結果」）。
-- SHA-256: `b11534cbd9b416a614ed2dc5941ea655f90421c76886a0b77a35876b57ac2b82`
-- Downstream analysis input: `data/processed/youbike_rental_in_field_2025.parquet` (must equal Data path)
+- Verification status: 2026-11-15 以乾淨 R 程序 knit 本檔，下方 Assertions 全部通過（結果見文末「執行結果」）。
+- SHA-256: `d059c1457763ff8af3a327f52ddcc37262df2aa6370d1db6f7550b812b612a2e`
+- Downstream analysis input: `data/processed/youbike_rental/youbike_rental_in_field_2025.parquet` (must equal Data path)
 
 Keep these paths and the `PROJECT-PROPOSAL.md` Data Artifacts row consistent. The source
 and processing links describe lineage; later finding notebooks read this exact
@@ -115,20 +115,20 @@ verify_input_sha256 <- function(path, expected) {
 ## Change for Your Own Data
 
 ```{r}
-INPUT_RELATIVE_PATH <- "data/processed/youbike_rental_in_field_2025.parquet"
+INPUT_RELATIVE_PATH <- "data/processed/youbike_rental/youbike_rental_in_field_2025.parquet"
 input_data_file <- project_file(INPUT_RELATIVE_PATH, "processed")
 EXPECTED_COLUMNS <- c(
   "StationUID", "StationID", "ServiceStatus", "ServiceType",
   "AvailableRentBikes", "AvailableReturnBikes", "SrcUpdateTime", "UpdateTime",
   "GeneralBikes", "ElectricBikes", "source_date"
 )
-EXPECTED_ROWS <- 5766528L # From the processing notebook's verified run.
-EXPECTED_SHA256 <- "b11534cbd9b416a614ed2dc5941ea655f90421c76886a0b77a35876b57ac2b82"
+EXPECTED_ROWS <- 6458380L # From the processing notebook's verified run.
+EXPECTED_SHA256 <- "d059c1457763ff8af3a327f52ddcc37262df2aa6370d1db6f7550b812b612a2e"
 
 # Station list used by the processing notebook, for the membership check.
 STATIONS_RELATIVE_PATH <- "data/processed/stations_in_field.csv"
 stations_file <- project_file(STATIONS_RELATIVE_PATH, "processed")
-STATIONS_SHA256 <- "74dadd7afe58f0b69b0a511f234dc85388e64290d5db420b8426767bad637f9e"
+STATIONS_SHA256 <- "fbf0c1797ddbbe59de4852b077ce79dc8243ccc59f08caf4cff0ddfa5eba1ce4"
 ```
 
 ## Summary
@@ -279,13 +279,14 @@ print(list(data_path = INPUT_RELATIVE_PATH, rows = nrow(df), columns = names(df)
 
 ## 執行結果
 
-2026-11-08 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）執行，所有 Assertions 通過。實際輸出摘要：
+2026-11-15（站點清單補入多邊形外 11 站，由 109 站改為 120 站；資料與文件已移至 `data/processed/youbike_rental/`）以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）執行，所有 Assertions 通過。實際輸出摘要：
 
-- 5,766,528 列 × 11 欄，欄位名稱、順序與型別和 2024 年版本相同；無缺值；(`StationUID`, `SrcUpdateTime`) 無重複；109 站全部屬於站點清單且都有資料。
-- `ServiceStatus`：「正常營運」5,766,474 列、「停止營運」54 列。停止營運時平均可借 1.91 輛、可還 12.1 位；正常營運時為 11.1 與 21.3。
-- 每站列數 3,208–168,023（中位數 48,767）；每日列數 1,999–40,002（中位數 11,159）。
+- 6,458,380 列 × 11 欄，欄位名稱、順序與型別和 2024 年版本相同；無缺值；(`StationUID`, `SrcUpdateTime`) 無重複；120 站全部屬於站點清單且都有資料。
+- 與 109 站前版（SHA-256 `b11534cb…`）比較：原 109 站的 5,766,528 列完全相同；新增 11 站共 691,852 列，每站 362 天皆有資料，沒有「停止營運」紀錄。
+- `ServiceStatus`：「正常營運」6,458,326 列、「停止營運」54 列。停止營運時平均可借 1.91 輛、可還 12.1 位；正常營運時為 11.4 與 21.8。
+- 每站列數 3,208–168,023（中位數 50,501）；每日列數 2,218–44,389（中位數 12,404）。
 - 沒有資料的日期：2025-02-12、02-17、02-27。
-- 每月同站更新間隔中位數：1–3 月約 2 分鐘，4 月 3 分鐘，5–7 月約 2 分鐘，8–9 月約 4 分鐘，10 月 3 分鐘，11 月 5 分鐘，12 月 7 分鐘。
-- 不足 350 天的站：`TPE500101234` 306 天、`TPE500101265` 83 天、`TPE500119089` 344 天、`TPE500119097` 328 天。
-- `AvailableRentBikes` ≠ `GeneralBikes + ElectricBikes` 共 0 列；`UpdateTime` 早於 `SrcUpdateTime` 共 14,341 列；兩者相差中位數 29 秒、最大 13,953 秒。
-- SHA-256：`b11534cbd9b416a614ed2dc5941ea655f90421c76886a0b77a35876b57ac2b82`
+- 每月同站更新間隔中位數：1–3 月約 2 分鐘，4 月 3 分鐘，5–7 月約 2 分鐘，8–9 月約 4–5 分鐘，10 月 3 分鐘，11 月 5 分鐘，12 月 7 分鐘。
+- 不足 350 天的站：`TPE500101234` 306 天、`TPE500101265` 83 天、`TPE500119089` 344 天、`TPE500119097` 328 天（新增 11 站皆無）。
+- `AvailableRentBikes` ≠ `GeneralBikes + ElectricBikes` 共 0 列；`UpdateTime` 早於 `SrcUpdateTime` 共 16,156 列；兩者相差中位數 29 秒、最大 13,953 秒。
+- SHA-256：`d059c1457763ff8af3a327f52ddcc37262df2aa6370d1db6f7550b812b612a2e`

@@ -12,13 +12,13 @@ knitr::opts_chunk$set(error = FALSE)
 
 - **Author**: `蔡睿燊`
 - **Created At**: `2026-10-17`
-- **Last Modified At**: `2026-11-07`
+- **Last Modified At**: `2026-11-15`（站點清單更新為 120 站；輸出移至 `data/processed/youbike_rental/`）
 
 ---
 
 ## What does this file do?
 
-- 從 2024 年臺北市 YouBike 站點剩餘數量歷史資料（每日一檔，共 366 檔）中，只保留位於研究範圍（臺大／公館一帶多邊形）內的站點紀錄。研究範圍站點清單來自 `data/processed/stations_in_field.csv`（由 `data/code/filter_stations_in_field.R` 產生，107 個 `StationUID`；2026-10-18 起使用擴大後的多邊形，納入周邊捷運站與宿舍，含臺大男一舍、男六舍、男八舍與基隆長興路口；2026-11-07 另依缺漏站點清單人工補入多邊形外 21 站）。
+- 從 2024 年臺北市 YouBike 站點剩餘數量歷史資料（每日一檔，共 366 檔）中，只保留位於研究範圍（臺大／公館一帶多邊形）內的站點紀錄。研究範圍站點清單來自 `data/processed/stations_in_field.csv`（由 `data/code/filter_stations_in_field.R` 產生，120 個 `StationUID`；2026-10-18 起使用擴大後的多邊形，納入周邊捷運站與宿舍，含臺大男一舍、男六舍、男八舍與基隆長興路口；2026-11-07 另依缺漏站點清單人工補入多邊形外 21 站；2026-11-08 起納入 2025 年站位快照；2026-11-15 依組員指定再補入多邊形外 11 站：臺灣科技大學 3 個校門、捷運臺電大樓站 1／2／2_1／5 號出口、大安運動中心與其停車場、臺大永齡生醫工程館、和平臥龍街口）。清單中 `臺大人文館`（2025-02-04 啟用）與 `羅斯福路三段283巷`（2025-10-10 啟用）在 2024 年沒有紀錄。
 - 觀察單位不變：站點 × 來源更新時間（`StationUID` × `SrcUpdateTime`），每筆為一次站點狀態更新。本檔只做篩選、型別轉換與一項重新編碼（見下），不做時間彙總、不補值。
 - 型別轉換：車數欄位轉為整數；`SrcUpdateTime`、`UpdateTime` 由含 `+08:00` 的 ISO 8601 字串轉為 `Asia/Taipei` 時區的時間；`StationUID`、`StationID`、`ServiceType` 保留原始文字。新增 `source_date`，記錄該列來自哪一天的原始檔。
 - 重新編碼：原始 `ServiceStatus` 除「正常營運」外，另有未列於 OAS 規格的代碼 `2`。依組員 2026-10-17 對照資料網站的確認（網站上服務狀態只有「停止營運」與「正常營運」），將 `2` 改為「停止營運」；輸出的 `ServiceStatus` 只有這兩個值。原始值仍保留在 `data/raw/` 的原始檔中。
@@ -32,9 +32,9 @@ knitr::opts_chunk$set(error = FALSE)
 - **Source Data Sets** (one entry per actual file):
   1. `data/processed/stations_in_field.csv`
      - Input key: `stations_in_field`
-     - Description: 研究範圍內的站點位置，一列為一個 `StationUID` × 位置（4 站年中移位，故 111 列、107 站）；本檔只使用 `StationUID`。
+     - Description: 研究範圍內的站點位置，一列為一個 `StationUID` × 位置（5 站曾移位，故 125 列、120 站）；本檔只使用 `StationUID`。
      - Documentation: `data/code/filter_stations_in_field.R`（processed-data 文件待建立）
-     - SHA-256: `83919dc097be4e7f82594deff97d782d2fdaf1de52538b08b9a23d764d6aabee`
+     - SHA-256: `fbf0c1797ddbbe59de4852b077ce79dc8243ccc59f08caf4cff0ddfa5eba1ce4`
   2. `data/code/youbike_rental_raw_manifest.csv`
      - Input key: `rental_manifest`
      - Description: 366 個原始檔的精確路徑、位元組數與 SHA-256，一檔一列。原始檔數量多，以此清單逐檔綁定，而不是用 glob 選檔。
@@ -50,14 +50,14 @@ knitr::opts_chunk$set(error = FALSE)
 
 ## What does this file output?
 
-- `data/processed/youbike_rental_in_field_2024.parquet`
+- `data/processed/youbike_rental/youbike_rental_in_field_2024.parquet`
   - Output key: `rental_in_field`
-  - Description: 研究範圍內 107 站的 2024 年站點狀態更新紀錄，原始 10 欄加上 `source_date`。
+  - Description: 研究範圍站點清單中各站的 2024 年站點狀態更新紀錄，原始 10 欄加上 `source_date`。
   - Role: `analysis`
-  - Documentation: `data/processed/youbike_rental_in_field_2024_doc.Rmd`
+  - Documentation: `data/processed/youbike_rental/youbike_rental_in_field_2024_doc.Rmd`
   - Expected schema and row-count rules: 11 欄；`StationUID` 全部屬於站點清單；(`StationUID`, `SrcUpdateTime`) 不重複；無缺值；`SrcUpdateTime` 的日期等於 `source_date`；列數等於各原始檔篩選後列數之和。
   - Verification status / SHA-256: 見最後一個 chunk 的實際輸出與下方「執行結果」。
-  - Downstream finding input: `data/processed/youbike_rental_in_field_2024.parquet` (same exact file)
+  - Downstream finding input: `data/processed/youbike_rental/youbike_rental_in_field_2024.parquet` (same exact file)
 
 ### 為什麼存成單一 Parquet 檔
 
@@ -136,10 +136,10 @@ INPUTS <- c(
   rental_manifest = "data/code/youbike_rental_raw_manifest.csv"
 )
 EXPECTED_INPUT_SHA256 <- c(
-  stations_in_field = "83919dc097be4e7f82594deff97d782d2fdaf1de52538b08b9a23d764d6aabee",
+  stations_in_field = "fbf0c1797ddbbe59de4852b077ce79dc8243ccc59f08caf4cff0ddfa5eba1ce4",
   rental_manifest = "1b02e3f7d1afb7c488daf5c7049761d6e5c4aaf15dc64bc7736c4966eec5ea46"
 )
-OUTPUTS <- c(rental_in_field = "data/processed/youbike_rental_in_field_2024.parquet")
+OUTPUTS <- c(rental_in_field = "data/processed/youbike_rental/youbike_rental_in_field_2024.parquet")
 
 input_paths <- c(
   stations_in_field = project_file(INPUTS[["stations_in_field"]], "processed"),
@@ -348,13 +348,14 @@ for (key in names(input_paths)) {
 
 ## 執行結果
 
-2026-11-07 依 `data/temp/可能缺漏站點清單.csv` 在 `stations_in_field.csv` 人工補入 21 站（多邊形未變，由 86 站改為 107 站）後，以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）重新完整執行，取代 86 站版本（SHA-256 `ef6160f4…`，8,112,511 列；更早版本為 78 站的 `9dddd818…`，7,225,134 列）。以下為該次實際輸出：
+2026-11-15 站點清單依組員指定人工補入多邊形外 11 站（臺灣科技大學 3 個校門、捷運臺電大樓站 1／2／2_1／5 號出口、大安運動中心與其停車場、臺大永齡生醫工程館、和平臥龍街口；清單由 109 站改為 120 站，SHA-256 `fbf0c179…`），輸出位置改為 `data/processed/youbike_rental/`（組員已將資料與文件移入此資料夾）後，以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）重新完整執行，取代 107 站版本（SHA-256 `6589d621…`，9,775,967 列；更早為 86 站的 `ef6160f4…` 與 78 站的 `9dddd818…`）。以下為實際輸出：
 
-- 輸入核對：站點清單 107 站（111 列）；366 個原始檔全部與 manifest 的 SHA-256 一致。
+- 輸入核對：站點清單 120 站（125 列）；366 個原始檔全部與 manifest 的 SHA-256 一致。
 - 空檔：6 檔為 0 bytes（2024-10-31、11-02、11-07、11-08、11-09、11-10），4 檔只有 1–2 列且都不屬於研究範圍（11-01、11-03、11-11、12-10）。共 356 天有資料、10 天沒有，**這 10 天在輸出中完全缺漏**，下游若做日別或時間序列分析需留意。
-- 篩選：原始 111,802,383 列 → 保留 9,775,967 列；107 站全部出現。原 86 站的 8,112,511 列與舊版完全相同。
+- 篩選：原始 111,802,383 列 → 保留 11,035,990 列；120 站中 118 站有資料。沒有資料的 2 站是 2025 年才啟用的 `臺大人文館`（`TPE500119097`）與 `羅斯福路三段283巷`（`TPE500101265`），屬預期結果。
+- 與前版比較：原 107 站的 9,775,967 列與前版完全相同；新增 11 站共 1,260,023 列，每站 354–356 天有資料，皆自 2024-01-01 至 2024-12-31。
 - 檢查全部通過：無缺值、(`StationUID`, `SrcUpdateTime`) 無重複、時間日期與檔名日期一致、車數皆為非負整數。
-- 每日列數差異大：中位數 25,134 列／天（最少 39、最多 138,722），2024-01-01 至 01-13 約為平常的 5 倍，1 月共 1,904,209 列。來源似乎在 1 月上旬改變了更新頻率，以列數加總或平均時須先統一時間間隔。
-- **`ServiceStatus` 重新編碼**：原始值 9,755,305 列為「正常營運」、20,662 列為 `2`（不在 OAS 規格的 0／1 代碼中）。依組員確認，`2` 改為「停止營運」；輸出中「停止營運」20,662 列、「正常營運」9,755,305 列，筆數與重新編碼前一致。`ServiceType` 全為 `YouBike2`。
-- 輸出：`data/processed/youbike_rental_in_field_2024.parquet`，9,775,967 列 × 11 欄，57.2 MB（zstd），讀回後欄名、列數、時區與數值皆與寫出前一致。
-- SHA-256：`6589d6215e8e4ee10c90d6fdfded07ccc2b8704147c7ab69129202f05225ea88`
+- 每日列數差異大：中位數 28,461 列／天（最少 40、最多 154,299），2024-01-01 至 01-13 約為平常的 5 倍，1 月共 2,127,893 列。來源似乎在 1 月上旬改變了更新頻率，以列數加總或平均時須先統一時間間隔。
+- **`ServiceStatus` 重新編碼**：原始值 11,015,022 列為「正常營運」、20,968 列為 `2`（不在 OAS 規格的 0／1 代碼中；新增 11 站占 306 列）。依組員確認，`2` 改為「停止營運」；輸出中「停止營運」20,968 列、「正常營運」11,015,022 列，筆數與重新編碼前一致。`ServiceType` 全為 `YouBike2`。
+- 輸出：`data/processed/youbike_rental/youbike_rental_in_field_2024.parquet`，11,035,990 列 × 11 欄，63.8 MB（zstd），讀回後欄名、列數、時區與數值皆與寫出前一致。
+- SHA-256：`5c91e9b439f421bc41d7c247508bc9bdd01f7bac4e11e8887243cb6053d8b3b5`
