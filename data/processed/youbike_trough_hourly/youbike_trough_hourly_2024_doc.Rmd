@@ -1,0 +1,290 @@
+---
+title: "youbike_trough_hourly_2024_doc"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Data Description
+- Author: 蔡睿燊
+- Date first created: 20261117
+- Background: 依期中簡報（`data/temp/prelim_present.pdf`）第 6 頁與第 8 頁的定義，由 2024 年研究範圍內站點剩餘數量資料算出各站每小時的**局部庫存波谷** $b_{i,s} = \min_{\tau \in \mathcal{T}_s} I_{i,\tau}$（小時內最低可借車數）與**借車有效暴露時間** $\text{Exposure}^{+}_{i,s} = 60 - \sum_{\tau} \mathbb{1}(I_{i,\tau} = b_{i,s})$（分鐘）。有效暴露時間是後續借車需求率 $\hat\lambda_{i,s} = Y^{+}_{i,s} / \text{Exposure}^{+}_{i,s}$ 的分母；分子 $Y^{+}$（借車次數）來自交易資料，不在本檔。每小時的狀態序列由「整點快照 + 小時內每筆更新」重建，每個狀態持續到下一筆更新，詳見[處理程式](../../code/youbike_trough_hourly.Rmd)。
+- Unit of observation: 站點 × 小時（`station_id` × `datetime`），`datetime` 為該小時 [h, h + 1) 的開始時間；平衡格點，120 站 × 2024 年 8,784 小時，兩者組合唯一。
+- Sample period: 2024-01-01 00:00 至 2024-12-31 23:00（小時開始時間，Asia/Taipei）。
+- Known issues:
+    - **波谷有缺值**：整點快照不可用時，所有波谷欄位都是 `NA`，原因記在 `trough_missing_reason`（`no record yet`、`no-data day`、`stale > 24h`），沒有補值。2025 年才啟用的 `臺大人文館`、`羅斯福路三段283巷` 全年 `in_service` = 0、波谷為 `NA`。2024-01-01 00 時沒有整點快照（每年各自處理），全部為 `NA`。
+    - **有效暴露時間為 0 但站上有車**：若某站整小時車數都沒變，$b_{i,s}$ 就等於當時車數，`exposure_rent_min` = 0，$\hat\lambda$ 無法定義。這種站時多在深夜，平均約 9 輛車；是否另行處理待組員討論（簡報第 22 頁問題八）。
+    - **車數有變動時也扣除停在波谷的分鐘**：依簡報定義，即使波谷是好幾輛車（例如 $b = 15$），停在 $b$ 的分鐘也不算有效暴露。本檔照定義計算，不另做調整。
+    - **分鐘數依更新時間推算**：資料自 2024-01-14 起大致只在狀態改變時才記錄（同站相鄰更新間隔中位數約 2 分鐘），本檔假設兩筆更新之間狀態不變。2024-01-01 至 01-13 約每分鐘一筆。
+    - **「停止營運」未排除**：`minutes_stopped` 記錄該小時處於停止營運的分鐘數，分析時通常只用 `minutes_stopped == 0` 的站時。
+    - `datetime` 為文字，與 `youbike_flow_hourly_2024.parquet` 和交易版每小時流量的格式相同，可直接以 (`station_id`, `datetime`) 合併；天氣檔的 `datetime` 描述 (t − 1 小時, t]，合併前需對齊。
+- Definition for each variable:
+    - 數值範圍來自下方 Summary Stats 的實際輸出。
+
+| Field | R type | Description | Values / range |
+| --- | --- | --- | --- |
+| `station_id` | character | 站點代碼（`StationUID` 去掉 `TPE`） | 120 個值，皆屬於 [stations_in_field.csv](../stations_in_field.csv) |
+| `station_name` | character | 站點中文名稱 | 每站一個名稱 |
+| `datetime` | character | 小時開始時間，`YYYY-MM-DD HH:MM:SS`（Asia/Taipei） | 2024-01-01 00:00:00 至 2024-12-31 23:00:00，8,784 個值 |
+| `in_service` | integer | 該站在該小時已啟用 = 1；啟用日 = `first_seen` 與該站當年第一筆紀錄日期中較早者 | 0／1 |
+| `trough_missing_reason` | character | 整點快照不可用的原因；可用時為 `NA` | `no record yet`、`no-data day`、`stale > 24h`、`NA` |
+| `AvailableRentBikes_start` | integer | 整點 h 的可借車數（輛） | 0–99 |
+| `trough_bikes` | integer | 局部庫存波谷 $b_{i,s}$：小時內最低可借車數（輛） | 0–98 |
+| `minutes_at_trough` | double | 可借車數等於 $b_{i,s}$ 的分鐘數 | (0, 60] |
+| `exposure_rent_min` | double | 借車有效暴露時間 = 60 − `minutes_at_trough`（分鐘） | [0, 60) |
+| `n_updates` | integer | (h, h + 1) 內的狀態更新筆數 | 0–60 |
+| `minutes_stopped` | double | 該小時處於「停止營運」的分鐘數 | 0–60 |
+
+- Data path: `data/processed/youbike_trough_hourly/youbike_trough_hourly_2024.parquet` (the exact file this notebook reads)
+- Source data: `data/processed/youbike_rental/youbike_rental_in_field_2024.parquet`（SHA-256 `5c91e9b4…`，文件 [youbike_rental_in_field_2024_doc.Rmd](../youbike_rental/youbike_rental_in_field_2024_doc.Rmd)）；站點清單 `data/processed/stations_in_field.csv`
+- Processing code: `data/code/youbike_trough_hourly.Rmd`
+- Role: `analysis`
+- Verification status: 2026-11-17 以乾淨 R 程序 knit 本檔，下方 Assertions 全部通過（結果見文末「執行結果」）。
+- SHA-256: `dfdf228ca89d6d69a85a8e5018efc0715e8c6ffc67cbc3fa761b99bd71c1aa5f`
+- Downstream analysis input: `data/processed/youbike_trough_hourly/youbike_trough_hourly_2024.parquet` (must equal Data path)
+
+Keep these paths and the `PROJECT-PROPOSAL.md` Data Artifacts row consistent. The source
+and processing links describe lineage; later finding notebooks read this exact
+processed file.
+
+讀取方式：`arrow::read_parquet()` 回傳一般 tibble，整數與浮點數型別會保留，不需另外設定欄位型別。
+
+```{r}
+library(tidyverse)
+library(arrow)
+
+find_project_root <- function(start = getwd()) {
+  candidate <- normalizePath(start, winslash = "/", mustWork = TRUE)
+  repeat {
+    if (file.exists(file.path(candidate, "AGENTS.md")) &&
+        dir.exists(file.path(candidate, "templates"))) return(candidate)
+    parent <- dirname(candidate)
+    if (identical(parent, candidate)) stop("Open this notebook within the student project containing AGENTS.md and templates/.")
+    candidate <- parent
+  }
+}
+PROJECT_ROOT <- find_project_root()
+
+project_file <- function(relative_path, area, must_exist = TRUE) {
+  # Exact project-relative paths only; no first-file search or OS-root /data path.
+  parts <- strsplit(relative_path, "/", fixed = TRUE)[[1]]
+  if (grepl("^(/|~|[A-Za-z]:)", relative_path) || ".." %in% parts ||
+      grepl("<", relative_path, fixed = TRUE) ||
+      !startsWith(relative_path, paste0("data/", area, "/"))) {
+    stop("Replace the placeholder with an exact path inside data/", area, "/: ", relative_path)
+  }
+  path <- file.path(PROJECT_ROOT, relative_path)
+  if (must_exist && (!file.exists(path) || dir.exists(path))) stop("Input file not found: ", path)
+  # Resolve existing ancestors to reject a path that leaves the project via a symlink.
+  ancestor <- path
+  while (!file.exists(ancestor)) ancestor <- dirname(ancestor)
+  resolved <- normalizePath(ancestor, winslash = "/", mustWork = TRUE)
+  allowed <- normalizePath(file.path(PROJECT_ROOT, "data", area), winslash = "/", mustWork = TRUE)
+  if (!startsWith(allowed, paste0(PROJECT_ROOT, "/"))) {
+    stop("data/", area, "/ resolves outside the project root.")
+  }
+  if (!identical(resolved, allowed) && !startsWith(resolved, paste0(allowed, "/"))) {
+    stop("Resolved path leaves data/", area, "/: ", relative_path)
+  }
+  path
+}
+
+sha256_file <- function(path) {
+  if (!requireNamespace("digest", quietly = TRUE)) {
+    stop("Cannot verify input identity: digest is unavailable. Use an available SHA-256 implementation before loading data.")
+  }
+  digest::digest(file = path, algo = "sha256", serialize = FALSE)
+}
+
+verify_input_sha256 <- function(path, expected) {
+  # Bind this run to the exact file inspected when the notebook was prepared.
+  if (!is.character(expected) || length(expected) != 1L || is.na(expected) ||
+      !grepl("^[0-9a-fA-F]{64}$", expected)) {
+    stop("Fill the expected SHA-256 from the inspected input before loading data.")
+  }
+  actual <- sha256_file(path)
+  if (!identical(actual, tolower(expected))) stop("Input changed: identify the new version before loading ", basename(path), ".")
+  actual
+}
+```
+
+## Change for Your Own Data
+
+```{r}
+DATA_YEAR <- "2024"
+INPUT_RELATIVE_PATH <- "data/processed/youbike_trough_hourly/youbike_trough_hourly_2024.parquet"
+input_data_file <- project_file(INPUT_RELATIVE_PATH, "processed")
+EXPECTED_COLUMNS <- c(
+  "station_id", "station_name", "datetime", "in_service",
+  "trough_missing_reason", "AvailableRentBikes_start",
+  "trough_bikes", "minutes_at_trough", "exposure_rent_min",
+  "n_updates", "minutes_stopped"
+)
+EXPECTED_HOURS <- 8784L
+EXPECTED_ROWS <- 120L * EXPECTED_HOURS # From the processing notebook's verified run.
+EXPECTED_SHA256 <- "dfdf228ca89d6d69a85a8e5018efc0715e8c6ffc67cbc3fa761b99bd71c1aa5f"
+MISSING_REASONS <- c("no record yet", "no-data day", "stale > 24h")
+
+# Station list used by the processing notebook, for the membership check.
+STATIONS_RELATIVE_PATH <- "data/processed/stations_in_field.csv"
+stations_file <- project_file(STATIONS_RELATIVE_PATH, "processed")
+STATIONS_SHA256 <- "fbf0c1797ddbbe59de4852b077ce79dc8243ccc59f08caf4cff0ddfa5eba1ce4"
+```
+
+## Summary
+
+```{r}
+input_fingerprint <- verify_input_sha256(input_data_file, EXPECTED_SHA256)
+df <- read_parquet(input_data_file)
+
+stations_fingerprint <- verify_input_sha256(stations_file, STATIONS_SHA256)
+stations_in_field <- read_csv(stations_file, col_types = cols(.default = col_character()))
+field_station_ids <- unique(stations_in_field$StationID)
+
+print(list(data_path = INPUT_RELATIVE_PATH, rows = nrow(df),
+           schema = map_chr(df, \(column) paste(class(column), collapse = "/")),
+           sha256 = input_fingerprint))
+```
+
+### Sample
+
+```{r}
+head(df, 10)
+```
+
+### Summary Stats
+
+```{r}
+glimpse(df)
+summary(df)
+colSums(is.na(df))
+```
+
+```{r}
+# Why the trough is missing (denominator: all station-hours)
+df |>
+  count(in_service, trough_missing_reason) |>
+  mutate(share = n / sum(n))
+
+# Numeric columns over usable station-hours (trough not NA)
+df |>
+  filter(!is.na(trough_bikes)) |>
+  pivot_longer(
+    c(AvailableRentBikes_start, trough_bikes, minutes_at_trough, exposure_rent_min, n_updates, minutes_stopped),
+    names_to = "variable"
+  ) |>
+  summarise(
+    N = n(),
+    mean = mean(value),
+    sd = sd(value),
+    min = min(value),
+    q25 = quantile(value, 0.25),
+    q50 = median(value),
+    q75 = quantile(value, 0.75),
+    max = max(value),
+    .by = variable
+  )
+```
+
+```{r}
+# Hour types among usable hours with normal service all hour (minutes_stopped == 0)
+df |>
+  filter(!is.na(trough_bikes), minutes_stopped == 0) |>
+  mutate(
+    hour_type = case_when(
+      exposure_rent_min > 0 ~ "exposure > 0",
+      trough_bikes == 0 ~ "empty all hour",
+      .default = "constant stock > 0"
+    )
+  ) |>
+  count(hour_type) |>
+  mutate(share = n / sum(n))
+
+# Usable station-hours per station (lowest five)
+df |>
+  summarise(usable_hours = sum(!is.na(trough_bikes)), .by = c(station_id, station_name)) |>
+  arrange(usable_hours) |>
+  head(5)
+```
+
+### Assertions
+
+```{r}
+stopifnot(identical(names(df), EXPECTED_COLUMNS))
+stopifnot(nrow(df) == EXPECTED_ROWS)
+
+# Types preserved by Parquet
+stopifnot(
+  all(map_lgl(df[c("station_id", "station_name", "datetime", "trough_missing_reason")], is.character)),
+  all(map_lgl(df[c("in_service", "AvailableRentBikes_start", "trough_bikes", "n_updates")], is.integer)),
+  all(map_lgl(df[c("minutes_at_trough", "exposure_rent_min", "minutes_stopped")], is.double))
+)
+
+# Balanced station x hour grid covering the whole year
+hour_starts <- ymd_hms(df$datetime, tz = "Asia/Taipei")
+expected_hours <- seq(
+  as.POSIXct(paste0(DATA_YEAR, "-01-01 00:00:00"), tz = "Asia/Taipei"),
+  by = "hour", length.out = EXPECTED_HOURS
+)
+stopifnot(
+  !anyNA(hour_starts),
+  !anyDuplicated(select(df, station_id, datetime)),
+  n_distinct(df$station_id) == 120L,
+  setequal(unique(df$station_id), field_station_ids),
+  setequal(unique(hour_starts), expected_hours),
+  all(count(df, station_id)$n == EXPECTED_HOURS),
+  !anyNA(df$station_name),
+  all(df$in_service %in% c(0L, 1L))
+)
+
+# Missingness and ranges set by the processing notebook
+usable <- !is.na(df$trough_bikes)
+stopifnot(
+  all(df$trough_missing_reason %in% c(MISSING_REASONS, NA)),
+  identical(usable, is.na(df$trough_missing_reason)),
+  all(!is.na(df$AvailableRentBikes_start) == usable),
+  all(!is.na(df$minutes_at_trough) == usable),
+  all(!is.na(df$exposure_rent_min) == usable),
+  all(!is.na(df$n_updates) == usable),
+  all(!is.na(df$minutes_stopped) == usable),
+  # Stations not yet in service never have a usable snapshot.
+  all(!usable[df$in_service == 0L]),
+  all(df$trough_bikes[usable] >= 0),
+  all(df$trough_bikes[usable] <= df$AvailableRentBikes_start[usable]),
+  all(df$minutes_at_trough[usable] > 0 & df$minutes_at_trough[usable] <= 60),
+  all(df$exposure_rent_min[usable] >= 0 & df$exposure_rent_min[usable] < 60),
+  all(abs(df$exposure_rent_min[usable] + df$minutes_at_trough[usable] - 60) < 1e-9),
+  all(df$n_updates[usable] >= 0),
+  all(df$minutes_stopped[usable] >= 0 & df$minutes_stopped[usable] <= 60)
+)
+
+actual_sha256 <- sha256_file(input_data_file)
+if (!identical(actual_sha256, input_fingerprint)) stop("File changed during documentation: inspect the new version.")
+print(list(data_path = INPUT_RELATIVE_PATH, rows = nrow(df), columns = names(df),
+           sha256 = actual_sha256,
+           status = "configured checks passed"))
+```
+
+## 執行結果
+
+2026-11-17 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）執行，所有 Assertions 通過。實際輸出摘要：
+
+- 1,054,080 列 × 11 欄，欄位型別與上方表格一致；(`station_id`, `datetime`) 無重複；120 站 × 8,784 小時的平衡格點，站點與 `stations_in_field.csv` 完全相同。
+- 波谷可用 947,646 站時（89.9%）；不可用 106,434 站時：未啟用 68,064（6.5%）、已啟用但尚無紀錄 180、跨無資料日 31,089（2.9%）、超過 24 小時未更新 7,101（0.7%）。所有波谷欄位的缺值位置與 `trough_missing_reason` 一致；未啟用的站時都沒有波谷。
+- 可用站時的摘要（N = 947,646）：
+
+  | 變數 | mean | sd | min | q25 | q50 | q75 | max |
+  | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+  | `AvailableRentBikes_start` | 9.30 | 11.6 | 0 | 1 | 5 | 13 | 99 |
+  | `trough_bikes` | 7.00 | 10.4 | 0 | 0 | 3 | 10 | 98 |
+  | `minutes_at_trough` | 25.5 | 22.4 | 0.017 | 4.98 | 17.7 | 48.8 | 60 |
+  | `exposure_rent_min` | 34.5 | 22.4 | 0 | 11.2 | 42.3 | 55.0 | 59.98 |
+  | `n_updates` | 11.6 | 13.4 | 0 | 2 | 7 | 17 | 60 |
+  | `minutes_stopped` | 0.52 | 5.52 | 0 | 0 | 0 | 0 | 60 |
+
+- 整小時正常營運的可用站時（N = 939,246）：有效暴露 > 0 共 760,503（81.0%）；整小時無車 50,419（5.4%）；整小時車數不變但有車 128,324（13.7%）。
+- 可用站時最少的站：`羅斯福路三段283巷`、`臺大人文館` 為 0（2025 年才啟用）；`國立臺北教育大學創意館` 447、`羅斯福路四段108巷口` 1,599、`和平東路二段76巷` 2,174（這些站在 2024 年中才開始有紀錄）。
+- SHA-256：`dfdf228ca89d6d69a85a8e5018efc0715e8c6ffc67cbc3fa761b99bd71c1aa5f`

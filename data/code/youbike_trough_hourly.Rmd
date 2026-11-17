@@ -1,0 +1,638 @@
+---
+title: "youbike_trough_hourly"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = FALSE)
+# Global options for knitr go here if needed
+## knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# README
+
+- **Author**: `蔡睿燊`
+- **Created At**: `2026-11-17`
+- **Last Modified At**: `2026-11-17`
+
+---
+
+## What does this file do?
+
+- 依期中簡報（`data/temp/prelim_present.pdf`）第 6 頁的定義，計算研究範圍內各站**每小時的局部庫存波谷**：
+
+  \[
+  b_{i,s} \equiv \min_{\tau \in \mathcal{T}_s} I_{i,\tau}
+  \]
+
+  其中 $i$ 是站點，$s$ 是一個小時 $[h, h + 1)$，$I_{i,\tau}$ 是時點 $\tau$ 的帳面可借車數（`AvailableRentBikes`）。
+
+- 同時計算第 8 頁的**借車有效暴露時間**：
+
+  \[
+  \text{Exposure}^{+}_{i,s} \equiv \sum_{\tau \in \mathcal{T}_s} \mathbb{1}(I_{i,\tau} > b_{i,s}) = 60 - \sum_{\tau \in \mathcal{T}_s} \mathbb{1}(I_{i,\tau} = b_{i,s})
+  \]
+
+  以分鐘計。它是後續借車需求率 $\hat\lambda_{i,s} = Y^{+}_{i,s} / \text{Exposure}^{+}_{i,s}$ 的分母（分子 $Y^{+}$ 來自交易資料，不在本檔）。
+
+- **為什麼不能直接對每小時的資料列取最小值**：站點剩餘數量資料自 2024-01-14 起大致只在站點狀態改變時才寫一筆（2025 年 4 月起更稀疏，每站每小時約 3–5 筆）。直接取 `min()` 會漏掉兩件事：
+  1. 進入這個小時之前留下來的狀態（例如 h − 5 分鐘降到 2 輛，整個小時都沒變）。
+  2. 整小時沒有任何更新的小時（這種小時根本沒有資料列）。
+
+  因此本檔先重建每個小時的**狀態序列**：
+
+  1. **整點快照**：小時開始 h 取該站 `SrcUpdateTime` ≤ h 的最後一筆狀態。取法與缺值規則完全沿用 [`youbike_flow_hourly.Rmd`](youbike_flow_hourly.Rmd)（組員 2026-10-18 決定）。以下情況快照設為 `NA`，原因記在 `trough_missing_reason`：
+     - `no record yet`：該站在 h 之前當年還沒有任何紀錄。
+     - `no-data day`：最後一筆紀錄到 h 之間跨過整天無資料的日期。
+     - `stale > 24h`：最後一筆紀錄距 h 超過 24 小時。
+  2. **小時內的更新**：`SrcUpdateTime` 落在 (h, h + 1) 的每一筆。剛好等於 h 的更新已經是快照本身，不重複計入。
+  3. **每個狀態的持續時間** = 下一筆的時間 − 這一筆的時間（分鐘）；最後一個狀態持續到 h + 1。每小時的持續時間加總為 60 分鐘（下方有 assertion）。
+  4. 在這個序列上取 `trough_bikes` = $b_{i,s}$ = 最小可借車數，`minutes_at_trough` = 可借車數等於 $b_{i,s}$ 的分鐘數，`exposure_rent_min` = 60 − `minutes_at_trough`。
+
+- 整點快照不可用的小時，所有波谷欄位都是 `NA`，不補值。快照可用但小時內某段跨進無資料日的情況不會發生：無資料日整天的整點快照都會是 `no-data day`。
+- `ServiceStatus` 為「停止營運」的時間不排除，而是另記 `minutes_stopped`（該小時處於停止營運狀態的分鐘數），由下游分析決定是否排除，與 `youbike_flow_hourly` 原樣保留營運狀態的做法一致。
+- 每年各自處理，不跨年取資料。因此每年第一個小時（1 月 1 日 00 時）沒有 00:00 的快照，波谷為 `NA`。
+- **輸出格式比照** `youbike_flow_hourly_{年}.parquet`：鍵值 `station_id` × `datetime`（該小時開始時間，文字 `YYYY-MM-DD HH:MM:SS`，Asia/Taipei），平衡格點為 `stations_in_field.csv` 全部 120 站 × 該年每個小時，可直接與流量表及交易資料以這兩欄合併。`in_service` 的規則也相同。
+- **本檔不更動簡報的方法**，但會在「檢查結果」報告一個邊界情況：如果某站整小時車數都沒變，$b_{i,s}$ 就等於當時車數，`exposure_rent_min` = 0，即使該站一直停著很多車。這種小時的 $\hat\lambda$ 無法定義（簡報第 22 頁問題八）。
+
+---
+
+## What does this file take?
+
+- **Source Data Sets** (one entry per actual file):
+  1. `data/processed/stations_in_field.csv`
+     - Input key: `stations_in_field`
+     - Description: 研究範圍站點清單，125 列（站點 × 位置）、120 個 `StationUID`；本檔使用 `StationUID`、`StationID`、站名與 `first_seen`。
+     - Documentation: `data/code/filter_stations_in_field.R`（processed-data 文件待建立）
+     - SHA-256: `fbf0c1797ddbbe59de4852b077ce79dc8243ccc59f08caf4cff0ddfa5eba1ce4`
+  2. `data/processed/youbike_rental/youbike_rental_in_field_2024.parquet`
+     - Input key: `rental_2024`
+     - Description: 2024 年站點狀態更新紀錄，一列為 `StationUID` × `SrcUpdateTime`，11,035,990 列 × 11 欄、118 站。
+     - Documentation: `data/processed/youbike_rental/youbike_rental_in_field_2024_doc.Rmd`
+     - SHA-256: `5c91e9b439f421bc41d7c247508bc9bdd01f7bac4e11e8887243cb6053d8b3b5`
+  3. `data/processed/youbike_rental/youbike_rental_in_field_2025.parquet`
+     - Input key: `rental_2025`
+     - Description: 2025 年站點狀態更新紀錄，6,458,380 列 × 11 欄、120 站。
+     - Documentation: `data/processed/youbike_rental/youbike_rental_in_field_2025_doc.Rmd`
+     - SHA-256: `d059c1457763ff8af3a327f52ddcc37262df2aa6370d1db6f7550b812b612a2e`
+  4. `data/processed/youbike_flow_hourly/youbike_flow_hourly_2024.parquet`、`..._2025.parquet`
+     - Input key: `flow_2024`、`flow_2025`
+     - Description: 只用來交叉核對整點快照：本檔的 `AvailableRentBikes_start` 應與流量表的同名欄位完全相同（包含 `NA` 的位置）。不參與計算。
+     - Documentation: `data/code/youbike_flow_hourly.Rmd`
+     - SHA-256: `8739d7f085ee3ea8fb17a91cf223c490bfb28d463c4cf6a2413d62958b9f9ea1`（2024）、`05b0af6036e4c1dad3b7331fbee69cffd188320b83bc0457a148bd7ca372f4c0`（2025）
+
+---
+
+## What does this file output?
+
+- `data/processed/youbike_trough_hourly/youbike_trough_hourly_2024.parquet`、`data/processed/youbike_trough_hourly/youbike_trough_hourly_2025.parquet`
+  - Output key: `trough_2024`、`trough_2025`
+  - Description: 站點 × 小時 panel，11 欄：
+    - `station_id`、`station_name`、`datetime`、`in_service`：定義同 `youbike_flow_hourly`。
+    - `trough_missing_reason`：整點快照不可用的原因；可用時為 `NA`。
+    - `AvailableRentBikes_start`：h 整點快照的可借車數（輛）。
+    - `trough_bikes`：局部庫存波谷 $b_{i,s}$，該小時內最低的可借車數（輛）。
+    - `minutes_at_trough`：可借車數等於 $b_{i,s}$ 的分鐘數，介於 (0, 60]。
+    - `exposure_rent_min`：借車有效暴露時間 $\text{Exposure}^{+}_{i,s}$ = 60 − `minutes_at_trough`（分鐘），介於 [0, 60)。
+    - `n_updates`：(h, h + 1) 內的狀態更新筆數。
+    - `minutes_stopped`：該小時處於「停止營運」狀態的分鐘數。
+  - Role: `analysis`
+  - Documentation: `data/processed/youbike_trough_hourly/youbike_trough_hourly_2024_doc.Rmd`、`data/processed/youbike_trough_hourly/youbike_trough_hourly_2025_doc.Rmd`
+  - Expected schema and row-count rules: 11 欄；2024 年 120 × 8,784 = 1,054,080 列，2025 年 120 × 8,760 = 1,051,200 列；(`station_id`, `datetime`) 不重複；`trough_bikes` 為 `NA` 若且唯若 `trough_missing_reason` 非 `NA`。
+  - Verification status / SHA-256: 見最後一個 chunk 的實際輸出與下方「執行結果」。
+  - Downstream finding input: 尚無；後續計算借車需求率 $\hat\lambda_{i,s}$ 時與交易資料的 `rent_total` 合併。
+
+All paths are relative to the project root, not the operating-system root.
+
+```{r}
+library(tidyverse)
+library(arrow)
+
+find_project_root <- function(start = getwd()) {
+  candidate <- normalizePath(start, winslash = "/", mustWork = TRUE)
+  repeat {
+    if (file.exists(file.path(candidate, "AGENTS.md")) &&
+        dir.exists(file.path(candidate, "templates"))) return(candidate)
+    parent <- dirname(candidate)
+    if (identical(parent, candidate)) stop("Open this notebook within the student project containing AGENTS.md and templates/.")
+    candidate <- parent
+  }
+}
+PROJECT_ROOT <- find_project_root()
+
+project_file <- function(relative_path, area, must_exist = TRUE) {
+  # Exact project-relative paths only; no first-file search or OS-root /data path.
+  parts <- strsplit(relative_path, "/", fixed = TRUE)[[1]]
+  if (grepl("^(/|~|[A-Za-z]:)", relative_path) || ".." %in% parts ||
+      grepl("<", relative_path, fixed = TRUE) ||
+      !startsWith(relative_path, paste0("data/", area, "/"))) {
+    stop("Replace the placeholder with an exact path inside data/", area, "/: ", relative_path)
+  }
+  path <- file.path(PROJECT_ROOT, relative_path)
+  if (must_exist && (!file.exists(path) || dir.exists(path))) stop("Input file not found: ", path)
+  # Resolve existing ancestors to reject a path that leaves the project via a symlink.
+  ancestor <- path
+  while (!file.exists(ancestor)) ancestor <- dirname(ancestor)
+  resolved <- normalizePath(ancestor, winslash = "/", mustWork = TRUE)
+  allowed <- normalizePath(file.path(PROJECT_ROOT, "data", area), winslash = "/", mustWork = TRUE)
+  if (!startsWith(allowed, paste0(PROJECT_ROOT, "/"))) {
+    stop("data/", area, "/ resolves outside the project root.")
+  }
+  if (!identical(resolved, allowed) && !startsWith(resolved, paste0(allowed, "/"))) {
+    stop("Resolved path leaves data/", area, "/: ", relative_path)
+  }
+  path
+}
+
+sha256_file <- function(path) {
+  if (!requireNamespace("digest", quietly = TRUE)) {
+    stop("Cannot verify input identity: digest is unavailable. Use an available SHA-256 implementation before loading data.")
+  }
+  digest::digest(file = path, algo = "sha256", serialize = FALSE)
+}
+
+verify_input_sha256 <- function(path, expected) {
+  # Bind this run to the exact file inspected when the notebook was prepared.
+  if (!is.character(expected) || length(expected) != 1L || is.na(expected) ||
+      !grepl("^[0-9a-fA-F]{64}$", expected)) {
+    stop("Fill the expected SHA-256 from the inspected input before loading data.")
+  }
+  actual <- sha256_file(path)
+  if (!identical(actual, tolower(expected))) stop("Input changed: identify the new version before loading ", basename(path), ".")
+  actual
+}
+```
+
+## 綁定輸入檔
+
+```{r}
+YEARS <- c("2024", "2025")
+
+INPUTS <- c(
+  stations_in_field = "data/processed/stations_in_field.csv",
+  rental_2024 = "data/processed/youbike_rental/youbike_rental_in_field_2024.parquet",
+  rental_2025 = "data/processed/youbike_rental/youbike_rental_in_field_2025.parquet",
+  flow_2024 = "data/processed/youbike_flow_hourly/youbike_flow_hourly_2024.parquet",
+  flow_2025 = "data/processed/youbike_flow_hourly/youbike_flow_hourly_2025.parquet"
+)
+EXPECTED_INPUT_SHA256 <- c(
+  stations_in_field = "fbf0c1797ddbbe59de4852b077ce79dc8243ccc59f08caf4cff0ddfa5eba1ce4",
+  rental_2024 = "5c91e9b439f421bc41d7c247508bc9bdd01f7bac4e11e8887243cb6053d8b3b5",
+  rental_2025 = "d059c1457763ff8af3a327f52ddcc37262df2aa6370d1db6f7550b812b612a2e",
+  flow_2024 = "8739d7f085ee3ea8fb17a91cf223c490bfb28d463c4cf6a2413d62958b9f9ea1",
+  flow_2025 = "05b0af6036e4c1dad3b7331fbee69cffd188320b83bc0457a148bd7ca372f4c0"
+)
+EXPECTED_RENTAL_ROWS <- c("2024" = 11035990L, "2025" = 6458380L)
+OUTPUTS <- c(
+  trough_2024 = "data/processed/youbike_trough_hourly/youbike_trough_hourly_2024.parquet",
+  trough_2025 = "data/processed/youbike_trough_hourly/youbike_trough_hourly_2025.parquet"
+)
+
+input_paths <- vapply(INPUTS, project_file, character(1), area = "processed")
+output_paths <- vapply(OUTPUTS, project_file, character(1), area = "processed", must_exist = FALSE)
+stopifnot(!any(output_paths %in% input_paths))
+if (any(file.exists(output_paths))) stop("Review existing outputs before replacing them.")
+
+input_fingerprints <- map_chr(names(input_paths), \(key) {
+  verify_input_sha256(input_paths[[key]], EXPECTED_INPUT_SHA256[[key]])
+}) |>
+  set_names(names(input_paths))
+```
+
+## 站點表
+
+站點清單一列為站點 × 位置（移位過的站有兩列），這裡整理成一站一列。與 `youbike_flow_hourly.Rmd` 相同。
+
+```{r}
+stations_in_field <- read_csv(
+  input_paths[["stations_in_field"]],
+  col_types = cols(.default = col_character())
+)
+
+station_table <- stations_in_field |>
+  summarise(
+    StationID = first(StationID),
+    station_name = first(StationNameZh_tw),
+    n_names = n_distinct(StationNameZh_tw),
+    first_seen = min(as.Date(first_seen)),
+    .by = StationUID
+  ) |>
+  arrange(StationID)
+
+stopifnot(
+  nrow(station_table) == 120L,
+  all(station_table$n_names == 1L),
+  all(station_table$StationID == str_remove(station_table$StationUID, "^TPE")),
+  !anyNA(station_table$first_seen)
+)
+```
+
+## 每小時波谷的計算函數
+
+兩年使用同一套規則，因此寫成一個函數。步驟對應 README 的 1–4：
+
+- `snapshots`：每站每個整點 h 的狀態（步驟 1），用 `closest(snapshot_time >= status_time)` 取 h 之前最後一筆。
+- `updates`：(h, h + 1) 內的更新（步驟 2）。`floor_date()` 把更新時間歸到所屬小時的開頭；`SrcUpdateTime > hour_start` 排除剛好在整點上的更新，因為它已經是快照。
+- `events`：快照與更新疊在一起，依時間排序後算出每個狀態的持續時間（步驟 3）。
+- `trough`：每站每小時取最小值與停在最小值的分鐘數（步驟 4）。
+
+```{r}
+MAX_STATUS_AGE_MIN <- 24 * 60
+STATUS_COLUMNS <- c("ServiceStatus", "AvailableRentBikes")
+STOPPED_STATUS <- "停止營運"
+OUTPUT_COLUMNS <- c(
+  "station_id", "station_name", "datetime", "in_service",
+  "trough_missing_reason", "AvailableRentBikes_start",
+  "trough_bikes", "minutes_at_trough", "exposure_rent_min",
+  "n_updates", "minutes_stopped"
+)
+
+# TRUE when the stretch from status_time to snapshot_time overlaps a no-data day.
+# A no-data day d covers [d 00:00, d+1 00:00). Copied from youbike_flow_hourly.Rmd.
+crosses_no_data_day <- function(status_time, snapshot_time, no_data_dates) {
+  day_starts <- as.POSIXct(as.character(no_data_dates), tz = "Asia/Taipei")
+  map2(day_starts, day_starts + days(1), \(day_start, day_end) {
+    status_time < day_end & snapshot_time > day_start
+  }) |>
+    reduce(`|`, .init = rep(FALSE, length(status_time)))
+}
+
+build_trough_hourly <- function(rental_in_field, year) {
+  year_start <- as.POSIXct(paste0(year, "-01-01 00:00:00"), tz = "Asia/Taipei")
+  year_end <- as.POSIXct(paste0(as.integer(year) + 1L, "-01-01 00:00:00"), tz = "Asia/Taipei")
+  hour_starts <- seq(year_start, year_end - hours(1), by = "hour")
+
+  # Whole days without any in-field record.
+  all_dates <- seq(as.Date(paste0(year, "-01-01")), as.Date(paste0(year, "-12-31")), by = "day")
+  no_data_dates <- all_dates[!all_dates %in% rental_in_field$source_date]
+
+  # 1. Hour-start snapshots: last status at or before h (same rule as youbike_flow_hourly).
+  snapshot_grid <- expand_grid(
+    StationUID = station_table$StationUID,
+    hour_start = hour_starts
+  )
+  status_updates <- rental_in_field |>
+    select(StationUID, status_time = SrcUpdateTime, all_of(STATUS_COLUMNS))
+
+  snapshots <- snapshot_grid |>
+    left_join(status_updates, join_by(StationUID, closest(hour_start >= status_time))) |>
+    mutate(
+      status_age_min = as.numeric(hour_start - status_time, units = "mins"),
+      trough_missing_reason = case_when(
+        is.na(status_time) ~ "no record yet",
+        crosses_no_data_day(status_time, hour_start, no_data_dates) ~ "no-data day",
+        status_age_min > MAX_STATUS_AGE_MIN ~ "stale > 24h",
+        .default = NA_character_
+      ),
+      across(all_of(STATUS_COLUMNS), \(value) if_else(is.na(trough_missing_reason), value, NA))
+    ) |>
+    select(StationUID, hour_start, all_of(STATUS_COLUMNS), trough_missing_reason)
+  stopifnot(
+    nrow(snapshots) == nrow(snapshot_grid),
+    !anyDuplicated(select(snapshots, StationUID, hour_start))
+  )
+
+  valid_hours <- snapshots |>
+    filter(is.na(trough_missing_reason)) |>
+    select(StationUID, hour_start)
+
+  # 2. Updates strictly inside (h, h + 1), only for hours with a usable snapshot.
+  updates <- rental_in_field |>
+    select(StationUID, event_time = SrcUpdateTime, all_of(STATUS_COLUMNS)) |>
+    mutate(hour_start = floor_date(event_time, "hour")) |>
+    filter(event_time > hour_start)
+  n_updates_inside <- nrow(updates)
+  updates <- updates |>
+    semi_join(valid_hours, join_by(StationUID, hour_start))
+
+  # 3. Event sequence per station-hour: snapshot at h, then the updates.
+  # Each state lasts until the next event; the last one lasts until h + 1.
+  events <- snapshots |>
+    filter(is.na(trough_missing_reason)) |>
+    mutate(event_time = hour_start) |>
+    select(StationUID, hour_start, event_time, all_of(STATUS_COLUMNS)) |>
+    bind_rows(updates) |>
+    arrange(StationUID, hour_start, event_time) |>
+    mutate(
+      next_in_same_hour = lead(StationUID) == StationUID & lead(hour_start) == hour_start,
+      next_in_same_hour = coalesce(next_in_same_hour, FALSE),
+      state_end = if_else(next_in_same_hour, lead(event_time), hour_start + hours(1)),
+      duration_min = as.numeric(state_end - event_time, units = "mins")
+    )
+  stopifnot(
+    !anyNA(events$AvailableRentBikes),
+    all(events$duration_min >= 0)
+  )
+
+  # 4. Trough and minutes at the trough for each station-hour.
+  trough <- events |>
+    summarise(
+      trough_bikes = min(AvailableRentBikes),
+      minutes_at_trough = sum(duration_min[AvailableRentBikes == trough_bikes]),
+      total_minutes = sum(duration_min),
+      n_updates = n() - 1L,
+      minutes_stopped = sum(duration_min[ServiceStatus == STOPPED_STATUS]),
+      .by = c(StationUID, hour_start)
+    )
+  stopifnot(
+    nrow(trough) == nrow(valid_hours),
+    # Durations inside each hour add up to 60 minutes.
+    all(abs(trough$total_minutes - 60) < 1e-6)
+  )
+
+  # In service from the earlier of first_seen and the first status update this year.
+  first_update <- rental_in_field |>
+    summarise(first_update_date = min(source_date), .by = StationUID)
+  in_service_table <- station_table |>
+    left_join(first_update, join_by(StationUID), relationship = "one-to-one") |>
+    mutate(in_service_from = pmin(first_seen, first_update_date, na.rm = TRUE)) |>
+    select(StationUID, station_id = StationID, station_name, in_service_from)
+
+  # 5. Balanced station x hour grid.
+  result <- snapshots |>
+    rename(AvailableRentBikes_start = AvailableRentBikes) |>
+    select(-ServiceStatus) |>
+    left_join(trough, join_by(StationUID, hour_start), relationship = "one-to-one") |>
+    left_join(in_service_table, join_by(StationUID), relationship = "many-to-one") |>
+    mutate(
+      # Round away floating-point noise from POSIXct differences.
+      minutes_at_trough = round(minutes_at_trough, 6),
+      minutes_stopped = round(minutes_stopped, 6),
+      exposure_rent_min = 60 - minutes_at_trough,
+      in_service = as.integer(as.Date(hour_start, tz = "Asia/Taipei") >= in_service_from)
+    )
+
+  stopifnot(
+    nrow(result) == nrow(station_table) * length(hour_starts),
+    !anyDuplicated(select(result, StationUID, hour_start)),
+    with(result, identical(is.na(trough_bikes), !is.na(trough_missing_reason))),
+    with(result, all(trough_bikes >= 0 & trough_bikes <= AvailableRentBikes_start, na.rm = TRUE)),
+    with(result, all(minutes_at_trough > 0 & minutes_at_trough <= 60, na.rm = TRUE)),
+    with(result, all(exposure_rent_min >= 0 & exposure_rent_min < 60, na.rm = TRUE)),
+    with(result, all(minutes_stopped >= 0 & minutes_stopped <= 60, na.rm = TRUE))
+  )
+
+  result <- result |>
+    arrange(station_id, hour_start) |>
+    mutate(datetime = format(hour_start, "%Y-%m-%d %H:%M:%S", tz = "Asia/Taipei")) |>
+    select(all_of(OUTPUT_COLUMNS))
+
+  list(
+    trough = result,
+    no_data_dates = no_data_dates,
+    row_counts = tibble(
+      rental_rows = nrow(rental_in_field),
+      updates_inside_hours = n_updates_inside,
+      updates_in_usable_hours = nrow(updates),
+      events = nrow(events),
+      usable_station_hours = nrow(trough),
+      output_rows = nrow(result)
+    )
+  )
+}
+```
+
+## 計算 2024、2025 年
+
+一次只讀入一年的狀態更新，以控制記憶體用量。
+
+```{r}
+results <- list()
+for (year in YEARS) {
+  rental_in_field <- read_parquet(input_paths[[paste0("rental_", year)]])
+  stopifnot(
+    nrow(rental_in_field) == EXPECTED_RENTAL_ROWS[[year]],
+    !anyDuplicated(select(rental_in_field, StationUID, SrcUpdateTime)),
+    identical(attr(rental_in_field$SrcUpdateTime, "tzone"), "Asia/Taipei"),
+    all(rental_in_field$StationUID %in% station_table$StationUID),
+    all(format(rental_in_field$source_date, "%Y") == year)
+  )
+  results[[year]] <- build_trough_hourly(rental_in_field, year)
+  rm(rental_in_field)
+  gc()
+}
+```
+
+## 檢查結果
+
+### 與流量表的整點快照交叉核對
+
+本檔的 `AvailableRentBikes_start` 與 `youbike_flow_hourly` 用同一個規則取得，兩者應完全相同（包含 `NA` 的位置）。
+
+```{r}
+for (year in YEARS) {
+  flow <- read_parquet(input_paths[[paste0("flow_", year)]]) |>
+    select(station_id, datetime, flow_start = AvailableRentBikes_start)
+  comparison <- results[[year]]$trough |>
+    select(station_id, datetime, AvailableRentBikes_start) |>
+    left_join(flow, join_by(station_id, datetime), relationship = "one-to-one")
+  stopifnot(
+    nrow(comparison) == nrow(flow),
+    identical(comparison$AvailableRentBikes_start, comparison$flow_start)
+  )
+  cat(year, ": hour-start snapshot identical to youbike_flow_hourly for", nrow(comparison), "station-hours\n")
+}
+```
+
+### 列數、缺值與分布
+
+```{r}
+for (year in YEARS) {
+  trough <- results[[year]]$trough
+  cat("\n=====", year, "=====\n")
+  cat("No-data days:", format(results[[year]]$no_data_dates), "\n")
+  print(results[[year]]$row_counts)
+
+  glimpse(trough)
+  print(colSums(is.na(trough)))
+
+  # Why the trough is missing; in_service = 0 rows are stations not yet opened.
+  trough |>
+    count(in_service, trough_missing_reason) |>
+    print()
+
+  # Distribution of the trough columns over usable station-hours.
+  trough |>
+    filter(!is.na(trough_bikes)) |>
+    select(trough_bikes, minutes_at_trough, exposure_rent_min, n_updates, minutes_stopped) |>
+    summary() |>
+    print()
+}
+```
+
+### 波谷與有效暴露時間的分類
+
+把可用的站時分成三類（只看整小時都「正常營運」的站時，即 `minutes_stopped == 0`）：
+
+- **整小時無車**：`trough_bikes == 0` 且 `exposure_rent_min == 0`，整個小時可借車數都是 0。
+- **整小時車數不變但有車**：`trough_bikes > 0` 且 `exposure_rent_min == 0`。這就是 README 提到的邊界情況：站上有車，但依簡報定義有效暴露時間為 0，$\hat\lambda$ 無法定義。
+- **有效暴露 > 0**：小時內車數曾高於波谷。
+
+```{r}
+classify_hours <- function(trough) {
+  trough |>
+    filter(!is.na(trough_bikes), minutes_stopped == 0) |>
+    mutate(
+      hour_type = case_when(
+        exposure_rent_min > 0 ~ "exposure > 0",
+        trough_bikes == 0 ~ "empty all hour",
+        .default = "constant stock > 0"
+      )
+    )
+}
+
+for (year in YEARS) {
+  classified <- classify_hours(results[[year]]$trough)
+  cat("\n=====", year, "=====\n")
+
+  classified |>
+    count(hour_type) |>
+    mutate(share = n / sum(n)) |>
+    print()
+
+  # How many bikes are sitting at stations in constant-stock hours?
+  classified |>
+    filter(hour_type == "constant stock > 0") |>
+    summarise(
+      station_hours = n(),
+      mean_bikes = mean(trough_bikes),
+      median_bikes = median(trough_bikes),
+      share_ge_5_bikes = mean(trough_bikes >= 5),
+      share_night_0_to_5 = mean(hour(ymd_hms(datetime, tz = "Asia/Taipei")) <= 5)
+    ) |>
+    print()
+
+  # By month: sparser updates (2025 from April) mean more constant-stock hours.
+  classified |>
+    mutate(month = str_sub(datetime, 1, 7)) |>
+    summarise(
+      station_hours = n(),
+      mean_updates = mean(n_updates),
+      share_constant_stock = mean(hour_type == "constant stock > 0"),
+      share_empty_all_hour = mean(hour_type == "empty all hour"),
+      mean_exposure_min = mean(exposure_rent_min),
+      .by = month
+    ) |>
+    print(n = 12)
+}
+```
+
+### 依時段的平均波谷
+
+只看整小時正常營運、已啟用的站時。平均值以 `mean()` 計算，各時段的站時數列在 `station_hours`。
+
+```{r}
+for (year in YEARS) {
+  cat("\n=====", year, "=====\n")
+  results[[year]]$trough |>
+    filter(!is.na(trough_bikes), minutes_stopped == 0, in_service == 1L) |>
+    mutate(hour_of_day = hour(ymd_hms(datetime, tz = "Asia/Taipei"))) |>
+    summarise(
+      station_hours = n(),
+      mean_trough_bikes = mean(trough_bikes),
+      share_trough_0 = mean(trough_bikes == 0),
+      mean_minutes_at_trough = mean(minutes_at_trough),
+      mean_exposure_min = mean(exposure_rent_min),
+      .by = hour_of_day
+    ) |>
+    arrange(hour_of_day) |>
+    print(n = 24)
+}
+```
+
+### 單一站時對照原始更新
+
+以捷運公館站（2 號出口）2024-03-04（星期一）08 時為例，列出該小時的整點快照、小時內每筆更新，與本檔算出的結果，方便人工核對。
+
+```{r}
+CHECK_STATION <- "TPE500101022"
+CHECK_HOUR <- as.POSIXct("2024-03-04 08:00:00", tz = "Asia/Taipei")
+
+rental_check <- read_parquet(input_paths[["rental_2024"]]) |>
+  filter(
+    StationUID == CHECK_STATION,
+    SrcUpdateTime > CHECK_HOUR - hours(2),
+    SrcUpdateTime < CHECK_HOUR + hours(1)
+  ) |>
+  select(SrcUpdateTime, ServiceStatus, AvailableRentBikes) |>
+  arrange(SrcUpdateTime)
+
+# The last row before 08:00 is the hour-start snapshot; rows after it are inside the hour.
+rental_check |>
+  filter(SrcUpdateTime >= max(SrcUpdateTime[SrcUpdateTime <= CHECK_HOUR])) |>
+  mutate(
+    state_end = coalesce(lead(SrcUpdateTime), CHECK_HOUR + hours(1)),
+    minutes_in_hour = as.numeric(state_end - pmax(SrcUpdateTime, CHECK_HOUR), units = "mins")
+  ) |>
+  print(n = Inf)
+
+results[["2024"]]$trough |>
+  filter(station_id == str_remove(CHECK_STATION, "^TPE"), datetime == format(CHECK_HOUR, "%Y-%m-%d %H:%M:%S")) |>
+  glimpse()
+```
+
+## 寫出與讀回驗證
+
+```{r}
+dir.create(dirname(output_paths[["trough_2024"]]), showWarnings = FALSE)
+
+verification <- list()
+for (year in YEARS) {
+  key <- paste0("trough_", year)
+  path <- output_paths[[key]]
+  if (file.exists(path)) stop("Output already exists; review it before replacing: ", path)
+  frame <- results[[year]]$trough
+  write_parquet(frame, path, compression = "zstd")
+  reread <- read_parquet(path)
+  stopifnot(
+    identical(names(reread), OUTPUT_COLUMNS),
+    nrow(reread) == nrow(frame),
+    !anyDuplicated(select(reread, station_id, datetime)),
+    isTRUE(all.equal(as.data.frame(frame), as.data.frame(reread), check.attributes = FALSE))
+  )
+  verification[[key]] <- list(
+    data_path = OUTPUTS[[key]],
+    rows = nrow(reread),
+    columns = ncol(reread),
+    size_mb = round(file.size(path) / 1e6, 2),
+    sha256 = sha256_file(path),
+    status = "read-back checks passed"
+  )
+  print(verification[[key]])
+}
+
+# Inputs must be unchanged after processing.
+for (key in names(input_paths)) {
+  stopifnot(identical(sha256_file(input_paths[[key]]), input_fingerprints[[key]]))
+}
+```
+
+## 執行結果
+
+2026-11-17 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）完整執行，約 12 分鐘，所有 assertion 通過。以下為實際輸出：
+
+- **輸入核對**：五個輸入檔的 SHA-256 皆與預期一致，執行後未改變；兩年的狀態更新筆數與上游一致。
+- **與流量表交叉核對**：兩年的 `AvailableRentBikes_start` 與 `youbike_flow_hourly` 完全相同（2024 年 1,054,080 站時、2025 年 1,051,200 站時，含 `NA` 的位置）。
+- **人工核對**：捷運公館站（2 號出口）2024-03-04 08 時，整點快照 11 輛，小時內 40 筆更新，最低 0 輛；把可借車數為 0 的 9 段時間逐段相加為 23.85 分鐘，與本檔的 `minutes_at_trough` = 23.85、`exposure_rent_min` = 36.15 一致。
+- **2024 年**：1,054,080 列（120 站 × 8,784 小時）× 11 欄。
+  - 小時內更新 11,035,964 筆，其中 11,026,808 筆落在快照可用的小時；狀態序列共 11,974,454 段。
+  - 波谷可用 947,646 站時；不可用 106,434 站時：未啟用 68,064、已啟用但尚無紀錄 180、跨無資料日 31,089、超過 24 小時未更新 7,101。（與流量表的 `NA` 數不同，因為流量需要頭尾兩個快照，波谷只需要開頭的快照。）
+  - 可用站時中，`trough_bikes` 中位數 3 輛、平均 7.0 輛；`exposure_rent_min` 中位數 42.3 分鐘、平均 34.5 分鐘。
+- **2025 年**：1,051,200 列（120 站 × 8,760 小時）× 11 欄。
+  - 波谷可用 1,032,230 站時；不可用 18,970 站時：未啟用 7,584、已啟用但尚無紀錄 222、跨無資料日 9,125、超過 24 小時未更新 2,039。
+  - `trough_bikes` 中位數 3 輛、平均 7.3 輛；`exposure_rent_min` 中位數 34.9 分鐘、平均 30.0 分鐘。
+- **站時分類**（整小時正常營運的可用站時）：
+
+  | 類型 | 2024 站時 | 2024 比例 | 2025 站時 | 2025 比例 |
+  | --- | ---: | ---: | ---: | ---: |
+  | 有效暴露 > 0 | 760,503 | 81.0% | 776,359 | 75.2% |
+  | 整小時無車（b = 0，暴露 = 0） | 50,419 | 5.4% | 42,413 | 4.1% |
+  | 整小時車數不變但有車（b > 0，暴露 = 0） | 128,324 | 13.7% | 213,255 | 20.7% |
+
+- **邊界情況需要組員討論**：「整小時車數不變但有車」的站時，依簡報定義有效暴露時間為 0，$\hat\lambda$ 無法定義，但站上其實有車（2024 年平均 9.1 輛、中位數 6 輛，58% 有 5 輛以上；71% 發生在 0–5 時）。
+  - 這不只是資料稀疏造成的：2024-01 前 13 天約每分鐘一筆紀錄，當月這類站時仍占 22.2%，表示確實有很多小時車數完全沒變（多半是深夜無人借車）。
+  - 但 2025 年 4 月起每站每小時平均更新筆數降到 2.7–4.6 筆，這類站時比例升到 19%–29%（2025-12 為 29.0%），其中一部分可能是更新太稀疏、漏掉了車數變化。2025 年 4 月起的 `minutes_at_trough` 與 `exposure_rent_min` 精確度較低，與 `youbike_flow_hourly` 記錄的同一個限制有關。
+  - 簡報的方法在車數變動的小時也會扣掉停在波谷的分鐘，即使波谷是好幾輛車（例如 b = 15）。這是第 22 頁問題八的情況；本檔照簡報定義計算，不另做調整。
+- **依時段**：平均波谷在清晨 4–6 時最高（約 8.8–9.0 輛），早上 8 時與傍晚 17–18 時最低（2024 年 5.5–5.8 輛）；波谷為 0 的比例在 18 時與 22 時最高（2024 年約 42%）。
+- **讀回檢查全部通過**。輸出：
+  - `data/processed/youbike_trough_hourly/youbike_trough_hourly_2024.parquet`：1,054,080 列 × 11 欄，5.21 MB（zstd），SHA-256 `dfdf228ca89d6d69a85a8e5018efc0715e8c6ffc67cbc3fa761b99bd71c1aa5f`
+  - `data/processed/youbike_trough_hourly/youbike_trough_hourly_2025.parquet`：1,051,200 列 × 11 欄，5.53 MB（zstd），SHA-256 `1985400eeeb4474e7eb9fcd74cb27afafa75de31a05985191b6050f497c5189c`
