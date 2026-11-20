@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 # Data Description
 - Author: 蔡睿燊
 - Date first created: 20261117
-- Background: 依期中簡報（`data/temp/prelim_present.pdf`）第 6 頁與第 8 頁的定義，由 2024 年研究範圍內站點剩餘數量資料算出各站每小時的**局部庫存波谷** $b_{i,s} = \min_{\tau \in \mathcal{T}_s} I_{i,\tau}$（小時內最低可借車數）與**借車有效暴露時間** $\text{Exposure}^{+}_{i,s} = 60 - \sum_{\tau} \mathbb{1}(I_{i,\tau} = b_{i,s})$（分鐘）。有效暴露時間是後續借車需求率 $\hat\lambda_{i,s} = Y^{+}_{i,s} / \text{Exposure}^{+}_{i,s}$ 的分母；分子 $Y^{+}$（借車次數）來自交易資料，不在本檔。每小時的狀態序列由「整點快照 + 小時內每筆更新」重建，每個狀態持續到下一筆更新，詳見[處理程式](../../code/youbike_trough_hourly.Rmd)。
+- Background: 依期中簡報（`data/temp/prelim_present.pdf`）第 6 頁與第 8 頁的定義，由 2024 年研究範圍內站點剩餘數量資料算出各站每小時的**局部庫存波谷** $b_{i,s} = \min_{\tau \in \mathcal{T}_s} I_{i,\tau}$（小時內最低可借車數）與**借車有效暴露時間** $\text{Exposure}^{+}_{i,s} = 60 - \sum_{\tau} \mathbb{1}(I_{i,\tau} = b_{i,s})$（分鐘）。有效暴露時間是後續借車需求率 $\hat\lambda_{i,s} = Y^{+}_{i,s} / \text{Exposure}^{+}_{i,s}$ 的分母；分子 $Y^{+}$（借車次數）來自交易資料，不在本檔。2026-11-20 起另加**還車端**：滿站門檻為實際運作車柱數 $C_{i,\tau}$ = 可借車數 + 可還空位，可借車數等於 $C_{i,\tau}$（即可還空位 = 0）時為滿站，**還車有效暴露時間** $\text{Exposure}^{-}_{i,s} = 60 - \sum_{\tau} \mathbb{1}(I_{i,\tau} = C_{i,\tau})$（分鐘）是還車需求率的分母；並附上每小時的實際運作車柱數與官方設置車柱數 `BikesCapacity`。每小時的狀態序列由「整點快照 + 小時內每筆更新」重建，每個狀態持續到下一筆更新，詳見[處理程式](../../code/youbike_trough_hourly.Rmd)。
 - Unit of observation: 站點 × 小時（`station_id` × `datetime`），`datetime` 為該小時 [h, h + 1) 的開始時間；平衡格點，120 站 × 2024 年 8,784 小時，兩者組合唯一。
 - Sample period: 2024-01-01 00:00 至 2024-12-31 23:00（小時開始時間，Asia/Taipei）。
 - Known issues:
@@ -19,6 +19,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
     - **有效暴露時間為 0 但站上有車**：若某站整小時車數都沒變，$b_{i,s}$ 就等於當時車數，`exposure_rent_min` = 0，$\hat\lambda$ 無法定義。這種站時多在深夜，平均約 9 輛車；是否另行處理待組員討論（簡報第 22 頁問題八）。
     - **車數有變動時也扣除停在波谷的分鐘**：依簡報定義，即使波谷是好幾輛車（例如 $b = 15$），停在 $b$ 的分鐘也不算有效暴露。本檔照定義計算，不另做調整。
     - **分鐘數依更新時間推算**：資料自 2024-01-14 起大致只在狀態改變時才記錄（同站相鄰更新間隔中位數約 2 分鐘），本檔假設兩筆更新之間狀態不變。2024-01-01 至 01-13 約每分鐘一筆。
+    - **滿站以實際運作車柱數判斷，不用官方車柱數**：官方 `BikesCapacity` 常大於「可借 + 可還」（有車柱不在服務中，例如故障），若以官方車柱數判斷，許多可還空位已是 0 的狀態不會被判為滿站。`BikesCapacity` 只作對照；取當天的站點檔，沒有站點檔的日子沿用之前最近一天，當年第一個站點檔之前為 `NA`。
+    - **99 的上限**：少數大站的可借車數、可還空位與官方車柱數會出現 99，看起來是兩位數上限截斷。`capped_99` = 1 的站時，`docks_*` 與 `BikesCapacity` 低估實際車柱數，`trough_bikes` 也可能被截斷；`minutes_full` 只看可還空位是否為 0，不受影響。
     - **「停止營運」未排除**：`minutes_stopped` 記錄該小時處於停止營運的分鐘數，分析時通常只用 `minutes_stopped == 0` 的站時。
     - `datetime` 為文字，與 `youbike_flow_hourly_2024.parquet` 和交易版每小時流量的格式相同，可直接以 (`station_id`, `datetime`) 合併；天氣檔的 `datetime` 描述 (t − 1 小時, t]，合併前需對齊。
 - Definition for each variable:
@@ -31,19 +33,27 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 | `datetime` | character | 小時開始時間，`YYYY-MM-DD HH:MM:SS`（Asia/Taipei） | 2024-01-01 00:00:00 至 2024-12-31 23:00:00，8,784 個值 |
 | `in_service` | integer | 該站在該小時已啟用 = 1；啟用日 = `first_seen` 與該站當年第一筆紀錄日期中較早者 | 0／1 |
 | `trough_missing_reason` | character | 整點快照不可用的原因；可用時為 `NA` | `no record yet`、`no-data day`、`stale > 24h`、`NA` |
+| `BikesCapacity` | integer | 官方設置車柱數（當天或之前最近一天的站點檔）；只作對照 | 見 Summary Stats |
+| `docks_start` | integer | 整點 h 的實際運作車柱數 = 可借車數 + 可還空位 | 見 Summary Stats |
+| `docks_min` | integer | 該小時內實際運作車柱數的最小值 | 見 Summary Stats |
+| `docks_max` | integer | 該小時內實際運作車柱數的最大值 | 見 Summary Stats |
+| `capped_99` | integer | 該小時任一狀態的可借車數或可還空位為 99 時 = 1（車柱數低估） | 0／1 |
 | `AvailableRentBikes_start` | integer | 整點 h 的可借車數（輛） | 0–99 |
 | `trough_bikes` | integer | 局部庫存波谷 $b_{i,s}$：小時內最低可借車數（輛） | 0–98 |
 | `minutes_at_trough` | double | 可借車數等於 $b_{i,s}$ 的分鐘數 | (0, 60] |
 | `exposure_rent_min` | double | 借車有效暴露時間 = 60 − `minutes_at_trough`（分鐘） | [0, 60) |
+| `AvailableReturnBikes_start` | integer | 整點 h 的可還空位（個） | 見 Summary Stats |
+| `minutes_full` | double | 滿站（可借車數 = 實際運作車柱數，即可還空位 = 0）的分鐘數 | [0, 60] |
+| `exposure_return_min` | double | 還車有效暴露時間 = 60 − `minutes_full`（分鐘） | [0, 60] |
 | `n_updates` | integer | (h, h + 1) 內的狀態更新筆數 | 0–60 |
 | `minutes_stopped` | double | 該小時處於「停止營運」的分鐘數 | 0–60 |
 
 - Data path: `data/processed/youbike_trough_hourly/youbike_trough_hourly_2024.parquet` (the exact file this notebook reads)
-- Source data: `data/processed/youbike_rental/youbike_rental_in_field_2024.parquet`（SHA-256 `5c91e9b4…`，文件 [youbike_rental_in_field_2024_doc.Rmd](../youbike_rental/youbike_rental_in_field_2024_doc.Rmd)）；站點清單 `data/processed/stations_in_field.csv`
+- Source data: `data/processed/youbike_rental/youbike_rental_in_field_2024.parquet`（SHA-256 `5c91e9b4…`，文件 [youbike_rental_in_field_2024_doc.Rmd](../youbike_rental/youbike_rental_in_field_2024_doc.Rmd)）；站點清單 `data/processed/stations_in_field.csv`；官方車柱數來自 `data/raw/youbike_historical_station_raw/` 的每日站點檔（逐檔 SHA-256 記於 `data/code/youbike_station_raw_manifest.csv`）
 - Processing code: `data/code/youbike_trough_hourly.Rmd`
 - Role: `analysis`
-- Verification status: 2026-11-17 以乾淨 R 程序 knit 本檔，下方 Assertions 全部通過（結果見文末「執行結果」）。
-- SHA-256: `dfdf228ca89d6d69a85a8e5018efc0715e8c6ffc67cbc3fa761b99bd71c1aa5f`
+- Verification status: 2026-11-17 第一版（11 欄）以乾淨 R 程序 knit 本檔通過；2026-11-20 新增車柱數與還車端 8 欄後重新產生資料並再次 knit 本檔，下方 Assertions 全部通過（結果見文末「執行結果」）。原有 11 欄與第一版逐值相同。
+- SHA-256: `30e2e4381422c0b38062474c6037263c390b0b2c5ec763133ecafc81cea11760`
 - Downstream analysis input: `data/processed/youbike_trough_hourly/youbike_trough_hourly_2024.parquet` (must equal Data path)
 
 Keep these paths and the `PROJECT-PROPOSAL.md` Data Artifacts row consistent. The source
@@ -119,13 +129,15 @@ INPUT_RELATIVE_PATH <- "data/processed/youbike_trough_hourly/youbike_trough_hour
 input_data_file <- project_file(INPUT_RELATIVE_PATH, "processed")
 EXPECTED_COLUMNS <- c(
   "station_id", "station_name", "datetime", "in_service",
-  "trough_missing_reason", "AvailableRentBikes_start",
-  "trough_bikes", "minutes_at_trough", "exposure_rent_min",
+  "trough_missing_reason",
+  "BikesCapacity", "docks_start", "docks_min", "docks_max", "capped_99",
+  "AvailableRentBikes_start", "trough_bikes", "minutes_at_trough", "exposure_rent_min",
+  "AvailableReturnBikes_start", "minutes_full", "exposure_return_min",
   "n_updates", "minutes_stopped"
 )
 EXPECTED_HOURS <- 8784L
 EXPECTED_ROWS <- 120L * EXPECTED_HOURS # From the processing notebook's verified run.
-EXPECTED_SHA256 <- "dfdf228ca89d6d69a85a8e5018efc0715e8c6ffc67cbc3fa761b99bd71c1aa5f"
+EXPECTED_SHA256 <- "30e2e4381422c0b38062474c6037263c390b0b2c5ec763133ecafc81cea11760"
 MISSING_REASONS <- c("no record yet", "no-data day", "stale > 24h")
 
 # Station list used by the processing notebook, for the membership check.
@@ -173,18 +185,24 @@ df |>
 df |>
   filter(!is.na(trough_bikes)) |>
   pivot_longer(
-    c(AvailableRentBikes_start, trough_bikes, minutes_at_trough, exposure_rent_min, n_updates, minutes_stopped),
+    c(
+      BikesCapacity, docks_start, docks_min, docks_max, capped_99,
+      AvailableRentBikes_start, trough_bikes, minutes_at_trough, exposure_rent_min,
+      AvailableReturnBikes_start, minutes_full, exposure_return_min,
+      n_updates, minutes_stopped
+    ),
     names_to = "variable"
   ) |>
   summarise(
     N = n(),
-    mean = mean(value),
-    sd = sd(value),
-    min = min(value),
-    q25 = quantile(value, 0.25),
-    q50 = median(value),
-    q75 = quantile(value, 0.75),
-    max = max(value),
+    n_missing = sum(is.na(value)),
+    mean = mean(value, na.rm = TRUE),
+    sd = sd(value, na.rm = TRUE),
+    min = min(value, na.rm = TRUE),
+    q25 = quantile(value, 0.25, na.rm = TRUE),
+    q50 = median(value, na.rm = TRUE),
+    q75 = quantile(value, 0.75, na.rm = TRUE),
+    max = max(value, na.rm = TRUE),
     .by = variable
   )
 ```
@@ -203,6 +221,29 @@ df |>
   count(hour_type) |>
   mutate(share = n / sum(n))
 
+# Return-side hour types among the same station-hours
+df |>
+  filter(!is.na(trough_bikes), minutes_stopped == 0) |>
+  mutate(
+    return_hour_type = case_when(
+      minutes_full == 60 ~ "full all hour",
+      minutes_full > 0 ~ "full part of hour",
+      .default = "never full"
+    )
+  ) |>
+  count(return_hour_type) |>
+  mutate(share = n / sum(n))
+
+# Working docks against official capacity (normal service, not capped at 99)
+df |>
+  filter(!is.na(trough_bikes), minutes_stopped == 0, capped_99 == 0L, !is.na(BikesCapacity)) |>
+  summarise(
+    station_hours = n(),
+    share_docks_below_capacity = mean(docks_start < BikesCapacity),
+    mean_docks_out_of_service = mean(BikesCapacity - docks_start),
+    share_docks_change_in_hour = mean(docks_min < docks_max)
+  )
+
 # Usable station-hours per station (lowest five)
 df |>
   summarise(usable_hours = sum(!is.na(trough_bikes)), .by = c(station_id, station_name)) |>
@@ -219,8 +260,13 @@ stopifnot(nrow(df) == EXPECTED_ROWS)
 # Types preserved by Parquet
 stopifnot(
   all(map_lgl(df[c("station_id", "station_name", "datetime", "trough_missing_reason")], is.character)),
-  all(map_lgl(df[c("in_service", "AvailableRentBikes_start", "trough_bikes", "n_updates")], is.integer)),
-  all(map_lgl(df[c("minutes_at_trough", "exposure_rent_min", "minutes_stopped")], is.double))
+  all(map_lgl(df[c(
+    "in_service", "BikesCapacity", "docks_start", "docks_min", "docks_max", "capped_99",
+    "AvailableRentBikes_start", "trough_bikes", "AvailableReturnBikes_start", "n_updates"
+  )], is.integer)),
+  all(map_lgl(df[c(
+    "minutes_at_trough", "exposure_rent_min", "minutes_full", "exposure_return_min", "minutes_stopped"
+  )], is.double))
 )
 
 # Balanced station x hour grid covering the whole year
@@ -250,6 +296,11 @@ stopifnot(
   all(!is.na(df$exposure_rent_min) == usable),
   all(!is.na(df$n_updates) == usable),
   all(!is.na(df$minutes_stopped) == usable),
+  all(map_lgl(
+    df[c("docks_start", "docks_min", "docks_max", "capped_99",
+         "AvailableReturnBikes_start", "minutes_full", "exposure_return_min")],
+    \(column) identical(!is.na(column), usable)
+  )),
   # Stations not yet in service never have a usable snapshot.
   all(!usable[df$in_service == 0L]),
   all(df$trough_bikes[usable] >= 0),
@@ -257,6 +308,14 @@ stopifnot(
   all(df$minutes_at_trough[usable] > 0 & df$minutes_at_trough[usable] <= 60),
   all(df$exposure_rent_min[usable] >= 0 & df$exposure_rent_min[usable] < 60),
   all(abs(df$exposure_rent_min[usable] + df$minutes_at_trough[usable] - 60) < 1e-9),
+  all(df$docks_start[usable] == df$AvailableRentBikes_start[usable] + df$AvailableReturnBikes_start[usable]),
+  all(df$docks_min[usable] <= df$docks_start[usable] & df$docks_start[usable] <= df$docks_max[usable]),
+  all(df$capped_99[usable] %in% c(0L, 1L)),
+  all(df$BikesCapacity > 0, na.rm = TRUE),
+  all(df$minutes_full[usable] >= 0 & df$minutes_full[usable] <= 60),
+  all(abs(df$exposure_return_min[usable] + df$minutes_full[usable] - 60) < 1e-9),
+  # A station full at the hour start is full for a positive time.
+  all(df$minutes_full[usable & df$AvailableReturnBikes_start == 0L] > 0),
   all(df$n_updates[usable] >= 0),
   all(df$minutes_stopped[usable] >= 0 & df$minutes_stopped[usable] <= 60)
 )
@@ -270,9 +329,9 @@ print(list(data_path = INPUT_RELATIVE_PATH, rows = nrow(df), columns = names(df)
 
 ## 執行結果
 
-2026-11-17 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）執行，所有 Assertions 通過。實際輸出摘要：
+2026-11-20 以乾淨 R 程序（`Rscript --vanilla`，`knitr::knit()` 輸出至暫存位置）執行，所有 Assertions 通過。借車端與缺值的數字與 2026-11-17 第一版相同。實際輸出摘要：
 
-- 1,054,080 列 × 11 欄，欄位型別與上方表格一致；(`station_id`, `datetime`) 無重複；120 站 × 8,784 小時的平衡格點，站點與 `stations_in_field.csv` 完全相同。
+- 1,054,080 列 × 19 欄，欄位型別與上方表格一致；(`station_id`, `datetime`) 無重複；120 站 × 8,784 小時的平衡格點，站點與 `stations_in_field.csv` 完全相同。
 - 波谷可用 947,646 站時（89.9%）；不可用 106,434 站時：未啟用 68,064（6.5%）、已啟用但尚無紀錄 180、跨無資料日 31,089（2.9%）、超過 24 小時未更新 7,101（0.7%）。所有波谷欄位的缺值位置與 `trough_missing_reason` 一致；未啟用的站時都沒有波谷。
 - 可用站時的摘要（N = 947,646）：
 
@@ -284,7 +343,19 @@ print(list(data_path = INPUT_RELATIVE_PATH, rows = nrow(df), columns = names(df)
   | `exposure_rent_min` | 34.5 | 22.4 | 0 | 11.2 | 42.3 | 55.0 | 59.98 |
   | `n_updates` | 11.6 | 13.4 | 0 | 2 | 7 | 17 | 60 |
   | `minutes_stopped` | 0.52 | 5.52 | 0 | 0 | 0 | 0 | 60 |
+  | `BikesCapacity`（缺 2,507） | 28.4 | 18.9 | 5 | 15 | 24 | 36 | 99 |
+  | `docks_start` | 27.4 | 18.3 | 0 | 15 | 23 | 35 | 99 |
+  | `docks_min` | 27.4 | 18.3 | 0 | 15 | 23 | 35 | 99 |
+  | `docks_max` | 27.5 | 18.4 | 0 | 15 | 24 | 35 | 99 |
+  | `capped_99` | 0.0049 | 0.070 | 0 | 0 | 0 | 0 | 1 |
+  | `AvailableReturnBikes_start` | 18.1 | 16.7 | 0 | 7 | 14 | 26 | 99 |
+  | `minutes_full` | 3.68 | 11.7 | 0 | 0 | 0 | 0 | 60 |
+  | `exposure_return_min` | 56.3 | 11.7 | 0 | 60 | 60 | 60 | 60 |
+
+  可用站時中 `BikesCapacity` 缺 2,507 個，都在 2024-01-01（當年第一個站點檔是 01-02）。
 
 - 整小時正常營運的可用站時（N = 939,246）：有效暴露 > 0 共 760,503（81.0%）；整小時無車 50,419（5.4%）；整小時車數不變但有車 128,324（13.7%）。
+- 還車端（同一批站時）：未曾滿站 816,126（86.9%）；部分時間滿站 112,692（12.0%）；整小時滿站 10,428（1.1%），這種站時的 `exposure_return_min` = 0。
+- 實際運作 vs. 官方車柱數（整小時正常營運、`capped_99 == 0`、`BikesCapacity` 非缺值，N = 932,167）：13.8% 的站時整點實際運作車柱數少於官方，平均少 0.74 個；小時內實際運作車柱數有變動的占 3.1%。
 - 可用站時最少的站：`羅斯福路三段283巷`、`臺大人文館` 為 0（2025 年才啟用）；`國立臺北教育大學創意館` 447、`羅斯福路四段108巷口` 1,599、`和平東路二段76巷` 2,174（這些站在 2024 年中才開始有紀錄）。
-- SHA-256：`dfdf228ca89d6d69a85a8e5018efc0715e8c6ffc67cbc3fa761b99bd71c1aa5f`
+- SHA-256：`30e2e4381422c0b38062474c6037263c390b0b2c5ec763133ecafc81cea11760`
