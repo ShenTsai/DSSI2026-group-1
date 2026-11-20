@@ -11,7 +11,13 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
 - **Author**: `蔡睿燊`
 - **Created At**: `2026-11-08`
-- **Last Modified At**: `2026-11-08`
+- **Last Modified At**: `2026-11-20`
+
+> **2026-11-20 更新**（程式碼與下方執行紀錄保留 2026-11-08 的原樣）：
+>
+> - 15 分鐘合併檔 `weather_taipei_15min_2024_2025.parquet` 與其文件已依組員決定刪除，只保留逐時版。
+> - 逐時合併檔之後由 [`weather_taipei_hourly_rain_amount.Rmd`](weather_taipei_hourly_rain_amount.Rmd) 新增 `rain_1h_mm`（該小時雨量）並覆寫，目前 SHA-256 已不是下方記錄的 `3d673f5e…`。
+> - 本檔讀取的四個年度 CSV 已於 commit `1bdecfb` 從 repo 移除；需要重跑時，須先從 git 歷史取回。
 
 ---
 

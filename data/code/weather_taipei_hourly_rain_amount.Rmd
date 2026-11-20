@@ -1,0 +1,277 @@
+---
+title: "weather_taipei_hourly_rain_amount"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# README
+
+- **Author**: `蔡睿燊`
+- **Created At**: `2026-11-20`
+- **Last Modified At**: `2026-11-20`
+
+---
+
+## What does this file do?
+
+- 在臺北站逐時天氣檔 `data/processed/weather/weather_taipei_hourly_2024_2025.parquet` 新增一欄 **`rain_1h_mm`：該小時雨量（mm）**，並寫回同一個檔案（組員 2026-11-20 要求）。原有 6 欄的數值完全不變。
+- 原本的 `D24R` 是當日累積雨量（自當日 00:00 起累積，00:00 那筆仍是前一天全日總量，見 [`weather_taipei_2024.Rmd`](weather_taipei_2024.Rmd)）。格點 t 代表區間 (t − 60 分鐘, t]，因此該小時雨量是相鄰兩個整點的累積值相減：
+
+  \[
+  \texttt{rain\_1h\_mm}_t =
+  \begin{cases}
+  D24R_t - D24R_{t-1} & \text{若 } t \text{ 與 } t-1 \text{ 屬於同一個累積日} \\
+  D24R_t & \text{若 } t \text{ 是新累積日的第一格（01:00）}
+  \end{cases}
+  \]
+
+  「累積日」沿用上游定義：時間減 1 秒所屬的日期。所以 00:00 這格（區間 23:00–00:00）仍屬前一天，用 00:00 減 23:00；01:00 這格是新的一天，起點為 0，直接等於 01:00 的 `D24R`。兩年已合併成同一檔，跨年的 2025-01-01 00:00 也能用 2024-12-31 23:00 相減。
+- 缺值規則：
+  - 本小時 `D24R` 缺值 → `NA`。
+  - 前一小時 `D24R` 缺值：若既有 `rain` = 0（上游已用最多 120 分鐘前的讀數確認累積雨量沒有變動），則雨量為 0；否則為 `NA`，不猜測。
+- 雨跡（`D24R_trace` = TRUE）在上游已記為 `D24R` = 0，因此「0 → 雨跡」或「雨跡 → 0」的小時雨量為 0 mm；這些小時的 `rain` 仍為 1（`rain` 看的是有無變動）。
+- 限制：`D24R` 是區間內最後一筆有效讀數，不一定剛好在整點；兩個整點的讀數間隔可能略長或略短於 60 分鐘。雨量計解析度為 0.5 mm。
+- 同時刪除 15 分鐘合併檔（`weather_taipei_15min_2024_2025.parquet` 與其文件），組員 2026-11-20 決定只保留逐時版。
+
+---
+
+## What does this file take?
+
+- **Source Data Sets** (one entry per actual file):
+  1. `data/processed/weather/weather_taipei_hourly_2024_2025.parquet`（新增欄位前的版本）
+     - Input key: `hourly`
+     - Description: 臺北站 2024–2025 逐時天氣，17,544 列 × 6 欄（`datetime`、`Temp`、`HUMD`、`D24R`、`D24R_trace`、`rain`）。
+     - Documentation: [`data/processed/weather/weather_taipei_hourly_2024_2025_doc.Rmd`](../processed/weather/weather_taipei_hourly_2024_2025_doc.Rmd)；產生程式 [`weather_taipei_combine_2024_2025.Rmd`](weather_taipei_combine_2024_2025.Rmd)
+     - SHA-256: `3d673f5e42f30ece48d514556d8c3c22848533b41c9a44ae543a20243a8e7000`
+     - 備註：上游兩年 CSV 已於 commit `1bdecfb` 從 repo 移除，此 Parquet 是目前唯一的逐時天氣來源；新增欄位前的版本可從 git 歷史取回。
+
+---
+
+## What does this file output?
+
+- `data/processed/weather/weather_taipei_hourly_2024_2025.parquet`（覆寫輸入檔）
+  - Output key: `hourly`
+  - Description: 同輸入，最後多一欄 `rain_1h_mm`（double，mm）。
+  - Role: `analysis`
+  - Documentation: [`data/processed/weather/weather_taipei_hourly_2024_2025_doc.Rmd`](../processed/weather/weather_taipei_hourly_2024_2025_doc.Rmd)
+  - Expected schema and row-count rules: 7 欄；17,544 列；原 6 欄數值與輸入完全相同；`rain_1h_mm` ≥ 0。
+  - Verification status / SHA-256: 見最後一個 chunk 的實際輸出與下方「執行結果」。
+  - Downstream finding input: `data/processed/weather/weather_taipei_hourly_2024_2025.parquet`（同一檔案）
+
+All paths are relative to the project root, not the operating-system root.
+讀寫 Parquet 使用 `arrow` 套件（tidyverse 沒有 Parquet 讀寫功能）。
+
+```{r}
+library(tidyverse)
+library(arrow)
+
+find_project_root <- function(start = getwd()) {
+  candidate <- normalizePath(start, winslash = "/", mustWork = TRUE)
+  repeat {
+    if (file.exists(file.path(candidate, "AGENTS.md")) &&
+        dir.exists(file.path(candidate, "templates"))) return(candidate)
+    parent <- dirname(candidate)
+    if (identical(parent, candidate)) stop("Open this notebook within the student project containing AGENTS.md and templates/.")
+    candidate <- parent
+  }
+}
+PROJECT_ROOT <- find_project_root()
+
+project_file <- function(relative_path, area, must_exist = TRUE) {
+  # Exact project-relative paths only; no first-file search or OS-root /data path.
+  parts <- strsplit(relative_path, "/", fixed = TRUE)[[1]]
+  if (grepl("^(/|~|[A-Za-z]:)", relative_path) || ".." %in% parts ||
+      grepl("<", relative_path, fixed = TRUE) ||
+      !startsWith(relative_path, paste0("data/", area, "/"))) {
+    stop("Replace the placeholder with an exact path inside data/", area, "/: ", relative_path)
+  }
+  path <- file.path(PROJECT_ROOT, relative_path)
+  if (must_exist && (!file.exists(path) || dir.exists(path))) stop("Input file not found: ", path)
+  # Resolve existing ancestors to reject a path that leaves the project via a symlink.
+  ancestor <- path
+  while (!file.exists(ancestor)) ancestor <- dirname(ancestor)
+  resolved <- normalizePath(ancestor, winslash = "/", mustWork = TRUE)
+  allowed <- normalizePath(file.path(PROJECT_ROOT, "data", area), winslash = "/", mustWork = TRUE)
+  if (!startsWith(allowed, paste0(PROJECT_ROOT, "/"))) {
+    stop("data/", area, "/ resolves outside the project root.")
+  }
+  if (!identical(resolved, allowed) && !startsWith(resolved, paste0(allowed, "/"))) {
+    stop("Resolved path leaves data/", area, "/: ", relative_path)
+  }
+  path
+}
+
+sha256_file <- function(path) {
+  if (!requireNamespace("digest", quietly = TRUE)) {
+    stop("Cannot verify input identity: digest is unavailable. Use an available SHA-256 implementation before loading data.")
+  }
+  digest::digest(file = path, algo = "sha256", serialize = FALSE)
+}
+```
+
+```{r}
+HOURLY_PATH <- "data/processed/weather/weather_taipei_hourly_2024_2025.parquet"
+# Version before rain_1h_mm was added (restore it from git history to rerun).
+EXPECTED_INPUT_SHA256 <- "3d673f5e42f30ece48d514556d8c3c22848533b41c9a44ae543a20243a8e7000"
+INPUT_COLUMNS <- c("datetime", "Temp", "HUMD", "D24R", "D24R_trace", "rain")
+EXPECTED_ROWS <- 17544L
+
+hourly_path <- project_file(HOURLY_PATH, "processed")
+input_sha256 <- sha256_file(hourly_path)
+if (!identical(input_sha256, EXPECTED_INPUT_SHA256)) {
+  stop("The hourly file is not the 6-column input version (it may already contain rain_1h_mm). ",
+       "Restore the input version from git history before rerunning.")
+}
+
+weather_hourly <- read_parquet(hourly_path)
+stopifnot(
+  identical(names(weather_hourly), INPUT_COLUMNS),
+  nrow(weather_hourly) == EXPECTED_ROWS,
+  !anyDuplicated(weather_hourly$datetime),
+  all(diff(as.numeric(weather_hourly$datetime)) == 3600)
+)
+glimpse(weather_hourly)
+```
+
+## 計算該小時雨量
+
+`lag()` 取前一列；檔案已依 `datetime` 排序且逐時連續（上一個 chunk 已檢查），所以前一列就是前一小時。
+
+```{r}
+weather_with_amount <- weather_hourly |>
+  mutate(
+    # Accumulation day: the 00:00 reading still belongs to the previous day.
+    accumulation_date = as_date(datetime - 1, tz = "Asia/Taipei"),
+    previous_D24R = lag(D24R),
+    previous_accumulation_date = lag(accumulation_date),
+    same_accumulation_day = accumulation_date == previous_accumulation_date,
+    rain_1h_mm = case_when(
+      is.na(D24R) ~ NA_real_,
+      # First hour of a new accumulation day (01:00): the accumulation starts from 0.
+      !same_accumulation_day ~ D24R,
+      !is.na(previous_D24R) ~ D24R - previous_D24R,
+      # Previous hour missing: rain = 0 already confirms no change from an earlier reading.
+      rain == 0L ~ 0,
+      .default = NA_real_
+    )
+  )
+
+weather_with_amount |>
+  slice(1:2) |>
+  select(datetime, D24R, previous_D24R, same_accumulation_day, rain, rain_1h_mm)
+```
+
+第一列 2024-01-01 00:00 沒有前一列，`previous_D24R` 與 `same_accumulation_day` 皆為 `NA`（`case_when()` 把 `NA` 條件視為不成立）。它的 `rain` = 0，因此落入「前一小時缺值但 `rain` = 0」那條規則，雨量為 0。
+
+## 檢查
+
+```{r}
+# Hours where the day boundary rule matters: 00:00 (same day as 23:00) and 01:00 (new day).
+weather_with_amount |>
+  filter(hour(datetime) %in% c(0, 1), D24R > 0) |>
+  select(datetime, D24R, previous_D24R, same_accumulation_day, rain_1h_mm) |>
+  head(6)
+
+weather_with_amount |>
+  count(rain, positive_amount = rain_1h_mm > 0)
+
+summary(weather_with_amount$rain_1h_mm)
+```
+
+- `rain` = 0 的小時雨量必為 0；`rain_1h_mm` > 0 的小時 `rain` 必為 1。
+- `rain` = 1 但雨量為 0 的小時，應全部是雨跡變動（起點或終點為雨跡）。
+
+```{r}
+# Trace-only changes: rain = 1 because D24R moved between 0 and trace, amount 0 mm.
+weather_with_amount |>
+  mutate(previous_D24R_trace = lag(D24R_trace)) |>
+  filter(rain == 1L, rain_1h_mm == 0) |>
+  count(D24R_trace, previous_D24R_trace)
+
+stopifnot(
+  all(weather_with_amount$rain_1h_mm >= 0, na.rm = TRUE),
+  all(weather_with_amount$rain_1h_mm[weather_with_amount$rain %in% 0L] == 0),
+  all(weather_with_amount$rain[which(weather_with_amount$rain_1h_mm > 0)] == 1L),
+  all(is.na(weather_with_amount$rain_1h_mm[is.na(weather_with_amount$D24R)]))
+)
+
+# Within each accumulation day, the hourly amounts add back up to the last D24R
+# whenever no hour in that day is missing.
+daily_check <- weather_with_amount |>
+  summarise(
+    hours = n(),
+    any_missing = anyNA(rain_1h_mm),
+    amount_total = sum(rain_1h_mm),
+    last_D24R = last(D24R),
+    .by = accumulation_date
+  ) |>
+  filter(!any_missing, hours == 24L)
+stopifnot(isTRUE(all.equal(daily_check$amount_total, daily_check$last_D24R)))
+nrow(daily_check)
+```
+
+缺值數與年度雨量（年度合計只加總非缺值小時，因此是下限）：
+
+```{r}
+weather_with_amount |>
+  mutate(year = year(datetime)) |>
+  summarise(
+    hours = n(),
+    rain_1h_missing = sum(is.na(rain_1h_mm)),
+    rain_missing = sum(is.na(rain)),
+    rainy_hours = sum(rain_1h_mm > 0, na.rm = TRUE),
+    total_mm = sum(rain_1h_mm, na.rm = TRUE),
+    max_mm = max(rain_1h_mm, na.rm = TRUE),
+    .by = year
+  )
+```
+
+```{r}
+output <- weather_with_amount |>
+  select(all_of(INPUT_COLUMNS), rain_1h_mm)
+
+# The original six columns must be unchanged.
+stopifnot(
+  identical(names(output), c(INPUT_COLUMNS, "rain_1h_mm")),
+  isTRUE(all.equal(as.data.frame(select(output, all_of(INPUT_COLUMNS))),
+                   as.data.frame(weather_hourly), check.attributes = FALSE))
+)
+glimpse(output)
+```
+
+## 寫出與讀回
+
+```{r}
+# Input was verified above; re-check right before replacing it.
+stopifnot(identical(sha256_file(hourly_path), EXPECTED_INPUT_SHA256))
+write_parquet(output, hourly_path)
+
+reread <- read_parquet(hourly_path)
+stopifnot(
+  identical(names(reread), names(output)),
+  nrow(reread) == EXPECTED_ROWS,
+  identical(attr(reread$datetime, "tzone"), "Asia/Taipei"),
+  is.double(reread$rain_1h_mm),
+  isTRUE(all.equal(as.data.frame(output), as.data.frame(reread), check.attributes = FALSE))
+)
+print(list(data_path = HOURLY_PATH, rows = nrow(reread),
+           parquet_schema = read_parquet(hourly_path, as_data_frame = FALSE)$schema$ToString(),
+           sha256 = sha256_file(hourly_path),
+           status = "read-back checks passed"))
+```
+
+## 執行結果
+
+2026-11-20 在乾淨 R 程序以 `knitr::knit()` 執行（輸出至暫存 Markdown 檢查），結果如下：
+
+- 輸入 SHA-256 與登記值 `3d673f5e…` 相同；6 欄、17,544 列，`datetime` 逐時連續不重複。
+- `rain_1h_mm` 無負值；`rain` = 0 的 15,461 小時雨量皆為 0；雨量 > 0 的 1,490 小時 `rain` 皆為 1。
+- `rain` = 1 但雨量 0 mm 的 266 小時全是雨跡變動：264 小時「0 → 雨跡」、2 小時「雨跡 → 0」。
+- 完整無缺值的 634 個累積日，逐時雨量加總等於當日最後的 `D24R`。
+- 缺值：`rain_1h_mm` 2024 年 91、2025 年 236 小時（共 327）。比 `rain` 多 7 小時：前一小時 `D24R` 缺值且 `rain` = 1，無法判斷雨量。
+- 年度雨量（只加總非缺值小時，為下限）：2024 年 2,183 mm（710 個雨量 > 0 的小時，單小時最大 46 mm）；2025 年 2,076 mm（780 小時，最大 54.5 mm）。
+- 寫出後讀回：7 欄、17,544 列，`rain_1h_mm` 為 double，原 6 欄數值不變。從新增欄位前的版本重跑一次，SHA-256 相同：`c8e7fe27119fc322aa134f6f58d7ece5db7597209dcc622531316c0d83362b2a`。
+- 檔案已被覆寫，再次執行前須先從 git 歷史取回新增欄位前的版本，否則第二個 chunk 會因 SHA-256 不符而停止。
